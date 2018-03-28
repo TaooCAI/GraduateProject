@@ -45,16 +45,6 @@ def conv3x3x3_padding(in_channels, out_channels):
 
 
 def cost_volume_generation(l, r, max_disparity):
-    # res = []
-    # w = r.size()[-1]
-    # for i in range(max_disparity + 1):
-    #     if cuda_available:
-    #         t = torch.cuda.FloatTensor(w, w).zero_()
-    #     else:
-    #         t = torch.zeros([w, w])
-    #     for j in range(w):
-    #         t[j][(j+i) % w] = 1
-    #     res.append(t)
     ans = []
     ans.append(torch.cat([l, r], dim=1))
     for t in range(1, max_disparity + 1):
@@ -62,39 +52,6 @@ def cost_volume_generation(l, r, max_disparity):
         ans.append(
             torch.cat([l, torch.cat([r[..., t:], r[..., :t]], dim=3)], dim=1))
     return torch.stack(ans, dim=4)
-
-
-def cost_volume_generation_bak(l, r, max_disparity):
-    ss = l.size()
-    res = torch.zeros(ss[0], ss[1]*2, max_disparity+1, ss[2], ss[3])
-    for i in range(max_disparity + 1):
-        res[:, :, i, ...] = torch.cat([l.data, r.data], dim=1)
-        r = torch.cat([r[..., -1:], r[..., 0:-1]], dim=3)
-    return Variable(res, requires_grad=True)
-
-
-def get_data_other():
-    data_folder = datasets.ImageFolder(root_path, transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ]))
-    batch = 1000
-    loader = torch.utils.data.DataLoader(data_folder, batch_size=batch)
-
-    for ii, images in enumerate(loader):
-        if ii == 0:
-            l = torch.zeros_like(images[0][0])
-            l = torch.unsqueeze(l, dim=0)
-            r = torch.zeros_like(l)
-        for j in range(len(images[1])):
-            if data_folder.class_to_idx.get("left") == images[1][j]:
-                l = torch.cat([l, images[0][j:j+1]])
-            else:
-                r = torch.cat([r, images[0][j:j+1]])
-
-    l = l[1:, ...]
-    r = r[1:, ...]
-    return l, r
 
 
 def readPFM(file):
@@ -261,14 +218,13 @@ class GCNet(nn.Module):
             # v = cost_volume_generation(l, r, 46)
             v = cost_volume_generation(l, r, 95)
 
-        with torch.cuda.device(2):
             out21 = self.conv21(v)
             out24 = self.conv24(out21)
             out27 = self.conv27(out24)
 
             out = self.conv29(self.conv28(out27)) + \
                 self.deconv33(self.conv32(self.conv31(self.conv30(out27))))
-
+        with torch.cuda.device(2):
             out = self.conv26(self.conv25(out24)) + self.deconv34(out)
 
             out = self.conv23(self.conv22(out21)) + self.deconv35(out)
@@ -288,16 +244,6 @@ class GCNet(nn.Module):
         return out
 
 
-def get_test_data():
-    h = 64
-    w = 64
-    n = 2
-    left = torch.randn([n, 3, h, w])
-    right = torch.randn([n, 3, h, w])
-    truth = torch.randn([n, h, w])
-    return left, right, truth
-
-
 def train_gcnet():
     start = time.time()
     net = GCNet()
@@ -305,17 +251,14 @@ def train_gcnet():
     if torch.cuda.device_count() > 1:
         print("Use ", torch.cuda.device_count(), " GPUs!")
         with torch.cuda.device(0):
-            net = nn.DataParallel(net)
+            net = nn.DataParallel(net, device_ids=[0])
 
     if torch.cuda.is_available():
         global cuda_available
         cuda_available = True
 
-    # l, r, truth = get_test_data()
     with torch.cuda.device(0):
         l, r, truth = get_data()
-        # if torch.cuda.is_available():
-        #     l, r, truth = l.cuda(), r.cuda(), truth.cuda()
         l, r, truth = Variable(l), Variable(r), Variable(truth)
         optimizer.zero_grad()
         out = net(l, r)
