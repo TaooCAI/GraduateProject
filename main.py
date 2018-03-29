@@ -80,16 +80,14 @@ class MyDataset(Dataset):
         def get_one(child_dir):
             data_dir = os.path.join(self.root_path, child_dir)
             images_list = os.listdir(data_dir)
+            ans = []
             for i, filename in enumerate(images_list):
                 image_path = os.path.join(data_dir, filename)
                 image = Image.open(image_path)
                 transform = self.transform
                 image = transform(image)
-                if i == 0:
-                    res = torch.unsqueeze(image, dim=0)
-                else:
-                    res = torch.cat(
-                        [res, torch.unsqueeze(image, dim=0)], dim=0)
+                ans.append(image)
+            res = torch.stack(ans, dim=0)
             return res, images_list
         l, imglist = get_one("left")
         r, imglist_r = get_one("right")
