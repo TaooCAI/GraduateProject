@@ -179,7 +179,7 @@ class GCNet(nn.Module):
         self.input_channels = 3
 
         self.conv1 = conv5x5(self.input_channels, 32)
-        # self.conv_down = conv5x5(32, 32)
+        self.conv_down = conv5x5(32, 32)
 
         self.block1 = ResidualBlock(32, 32)
         self.block2 = ResidualBlock(32, 32)
@@ -208,57 +208,62 @@ class GCNet(nn.Module):
         self.conv32 = conv3x3x3_padding(128, 128)
 
         self.deconv33 = nn.ConvTranspose3d(
-            128, 64, 3, stride=2, output_padding=(1, 0, 0))
+            128, 64, 3, stride=2, output_padding=(0, 0, 0))
         self.deconv34 = nn.ConvTranspose3d(
             64, 64, 3, stride=2, output_padding=(1, 0, 0))
         self.deconv35 = nn.ConvTranspose3d(
             64, 64, 3, stride=2, output_padding=(1, 0, 0))
         self.deconv36 = nn.ConvTranspose3d(
-            64, 32, 3, stride=2, output_padding=(0, 0, 1))
+            64, 32, 3, stride=2, output_padding=(1, 0, 0))
 
         self.deconv37 = nn.ConvTranspose3d(
-            32, 1, 3, stride=2, output_padding=(1, 1, 0))
+            32, 32, 3, stride=2, output_padding=(0, 0, 1))
 
-        # self.deconv38 = nn.ConvTranspose3d(
-        #     32, 1, 3, stride=2, output_padding=(1, 1, 0)
-        # )
+        self.deconv38 = nn.ConvTranspose3d(
+            32, 1, 3, stride=2, output_padding=(1, 1, 0)
+        )
 
     def forward(self, l, r):
-        l = self.conv1(l)
-        l = self.block8(self.block7(self.block6(self.block5(
-            self.block4(self.block3(self.block2(self.block1(l))))))))
-        l = self.conv2(l)
+        with torch.cuda.device(1):
+            l = self.conv_down(self.conv1(l))
+            l = self.block8(self.block7(self.block6(self.block5(
+                self.block4(self.block3(self.block2(self.block1(l))))))))
+            l = self.conv2(l)
 
-        r = self.conv1(r)
-        r = self.block8(self.block7(self.block6(self.block5(
-            self.block4(self.block3(self.block2(self.block1(r))))))))
-        r = self.conv2(r)
+            r = self.conv_down(self.conv1(r))
+            r = self.block8(self.block7(self.block6(self.block5(
+                self.block4(self.block3(self.block2(self.block1(r))))))))
+            r = self.conv2(r)
+            print(l.get_device())
+            print(r.get_device())
 
-        # v = cost_volume_generation(l, r, 46)
-        v = cost_volume_generation(l, r, 95)
+        with torch.cuda.device(0):
+            v = cost_volume_generation(l, r, 46)
+            # v = cost_volume_generation(l, r, 95)
+            print(v.get_device())
+        with torch.cuda.device(2):
+            out21 = self.conv21(v)
+            out24 = self.conv24(out21)
+            out27 = self.conv27(out24)
 
-        out21 = self.conv21(v)
-        out24 = self.conv24(out21)
-        out27 = self.conv27(out24)
+            out = self.conv29(self.conv28(out27)) + \
+                self.deconv33(self.conv32(self.conv31(self.conv30(out27))))
+            out = self.conv26(self.conv25(out24)) + self.deconv34(out)
 
-        out = self.conv29(self.conv28(out27)) + \
-            self.deconv33(self.conv32(self.conv31(self.conv30(out27))))
-        out = self.conv26(self.conv25(out24)) + self.deconv34(out)
+            out = self.conv23(self.conv22(out21)) + self.deconv35(out)
 
-        out = self.conv23(self.conv22(out21)) + self.deconv35(out)
+            out = self.conv20(self.conv19(v)) + self.deconv36(out)
 
-        out = self.conv20(self.conv19(v)) + self.deconv36(out)
+            out = self.deconv38(self.deconv37(out))
 
-        out = self.deconv37(out)
-
-        out = (nn.Softmax(dim=4))(torch.mul(out, -1))
-        res = []
-        for i in range(out.size()[2]):
-            if len(res) == 0:
-                res.append(torch.mul(out[:, :, :, :, i], i))
-            else:
-                res[0] += torch.mul(out[:, :, :, :, i], i)
-        out = torch.squeeze(res[0], dim=1)
+            out = (nn.Softmax(dim=4))(torch.mul(out, -1))
+            res = []
+            for i in range(out.size()[2]):
+                if len(res) == 0:
+                    res.append(torch.mul(out[:, :, :, :, i], i))
+                else:
+                    res[0] += torch.mul(out[:, :, :, :, i], i)
+            out = torch.squeeze(res[0], dim=1)
         return out
 
 
