@@ -71,7 +71,7 @@ class MyDataset(Dataset):
         l = self.data[0]
         r = self.data[1]
         truth = self.data[2]
-        return l[index:index+1], r[index:index+1], truth[index:index+1]
+        return l[index, ...], r[index, ...], truth[index, ...]
 
     def __len__(self):
         return len(self.data)
@@ -111,7 +111,7 @@ class MyDataset(Dataset):
 train_loader = torch.utils.data.DataLoader(MyDataset(root_path, truth_path, transform=transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])), batch_size=1)
+])), batch_size=2)
 
 
 def conv5x5(in_channels, out_channels):
@@ -275,16 +275,17 @@ def train_gcnet(epoch):
     net.train()
 
     for batch_idx, (l, r, truth) in enumerate(train_loader):
-        optimizer.zero_grad()
-        out = net(l, r)
+        pass
+        # optimizer.zero_grad()
+        # out = net(l, r)
 
-        loss = F.l1_loss(out, truth)
-        loss.backward()
-        optimizer.step()
-        if batch_idx % 10 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(truth), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.data[0]))
+        # loss = F.l1_loss(out, truth)
+        # loss.backward()
+        # optimizer.step()
+        # if batch_idx % 10 == 0:
+        #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+        #         epoch, batch_idx * len(truth), len(train_loader.dataset),
+        #         100. * batch_idx / len(train_loader), loss.data[0]))
 
 
 def test_gcnet():
