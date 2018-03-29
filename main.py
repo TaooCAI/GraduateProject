@@ -275,17 +275,16 @@ def train_gcnet(epoch):
     net.train()
 
     for batch_idx, (l, r, truth) in enumerate(train_loader):
-        pass
-        # optimizer.zero_grad()
-        # out = net(l, r)
+        optimizer.zero_grad()
+        out = net(l, r)
 
-        # loss = F.l1_loss(out, truth)
-        # loss.backward()
-        # optimizer.step()
-        # if batch_idx % 10 == 0:
-        #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-        #         epoch, batch_idx * len(truth), len(train_loader.dataset),
-        #         100. * batch_idx / len(train_loader), loss.data[0]))
+        loss = F.l1_loss(out, truth)
+        loss.backward()
+        optimizer.step()
+        if batch_idx % 10 == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(truth), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.data[0]))
 
 
 def test_gcnet():
