@@ -273,6 +273,9 @@ def train_gcnet(epoch):
     net.train()
 
     for batch_idx, (l, r, truth) in enumerate(train_loader):
+        l, r, truth = Variable(l), Variable(r), Variable(truth)
+        if cuda_available:
+            l, r, truth = l.cuda(), r.cuda(), truth.cuda()
         optimizer.zero_grad()
         out = net(l, r)
 
