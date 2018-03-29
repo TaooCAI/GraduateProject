@@ -266,7 +266,6 @@ class GCNet(nn.Module):
 
 net = GCNet()
 if torch.cuda.is_available():
-    global cuda_available
     cuda_available = True
     net.cuda()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.5)
