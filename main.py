@@ -96,7 +96,6 @@ class MyDataset(Dataset):
         assert imglist == imglist_r
 
         truth_namelist = [x[:x.rindex('.') + 1] + "pfm" for x in imglist]
-        print(truth_namelist)
         ans = []
         for ii, truth_name in enumerate(truth_namelist):
             abso_path = os.path.join(self.truth_path, truth_name)
@@ -105,6 +104,7 @@ class MyDataset(Dataset):
             ans.append(onetruth)
 
         truth = torch.stack(ans, dim=0)
+        print(truth_namelist)
         return l, r, truth
 
 
