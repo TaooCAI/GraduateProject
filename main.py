@@ -179,7 +179,7 @@ class GCNet(nn.Module):
         self.input_channels = 3
 
         self.conv1 = conv5x5(self.input_channels, 32)
-        self.conv_down = conv5x5(32, 32)
+        # self.conv_down = conv5x5(32, 32)
 
         self.block1 = ResidualBlock(32, 32)
         self.block2 = ResidualBlock(32, 32)
@@ -208,29 +208,25 @@ class GCNet(nn.Module):
         self.conv32 = conv3x3x3_padding(128, 128)
 
         self.deconv33 = nn.ConvTranspose3d(
-            128, 64, 3, stride=2, output_padding=(0, 0, 0))
+            128, 64, 3, stride=2, output_padding=(1, 0, 0))
         self.deconv34 = nn.ConvTranspose3d(
             64, 64, 3, stride=2, output_padding=(1, 0, 0))
         self.deconv35 = nn.ConvTranspose3d(
             64, 64, 3, stride=2, output_padding=(1, 0, 0))
         self.deconv36 = nn.ConvTranspose3d(
-            64, 32, 3, stride=2, output_padding=(1, 0, 0))
+            64, 32, 3, stride=2, output_padding=(0, 0, 1))
 
         self.deconv37 = nn.ConvTranspose3d(
-            32, 32, 3, stride=2, output_padding=(0, 0, 1))
-
-        self.deconv38 = nn.ConvTranspose3d(
-            32, 1, 3, stride=2, output_padding=(1, 1, 0)
-        )
+            32, 1, 3, stride=2, output_padding=(1, 1, 0))
 
     def forward(self, l, r):
         with torch.cuda.device(1):
-            l = self.conv_down(self.conv1(l))
+            l = self.conv1(l)
             l = self.block8(self.block7(self.block6(self.block5(
                 self.block4(self.block3(self.block2(self.block1(l))))))))
             l = self.conv2(l)
 
-            r = self.conv_down(self.conv1(r))
+            r = self.conv1(r)
             r = self.block8(self.block7(self.block6(self.block5(
                 self.block4(self.block3(self.block2(self.block1(r))))))))
             r = self.conv2(r)
@@ -238,8 +234,8 @@ class GCNet(nn.Module):
             print(r.get_device())
 
         with torch.cuda.device(0):
-            v = cost_volume_generation(l, r, 46)
-            # v = cost_volume_generation(l, r, 95)
+            # v = cost_volume_generation(l, r, 46)
+            v = cost_volume_generation(l, r, 95)
             print(v.get_device())
         with torch.cuda.device(2):
             out21 = self.conv21(v)
@@ -254,7 +250,7 @@ class GCNet(nn.Module):
 
             out = self.conv20(self.conv19(v)) + self.deconv36(out)
 
-            out = self.deconv38(self.deconv37(out))
+            out = self.deconv37(out)
 
             out = (nn.Softmax(dim=4))(torch.mul(out, -1))
             res = []
