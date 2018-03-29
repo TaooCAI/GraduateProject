@@ -217,9 +217,9 @@ class GCNet(nn.Module):
             64, 32, 3, stride=2, output_padding=(1, 0, 0)).cuda(0)
 
         self.deconv37 = nn.ConvTranspose3d(
-            32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(0)
+            32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(2)
         self.deconv38 = nn.ConvTranspose3d(
-            32, 1, 3, stride=2, output_padding=(1, 1, 0)).cuda(0)
+            32, 1, 3, stride=2, output_padding=(1, 1, 0)).cuda(2)
 
     def forward(self, l, r):
         l = self.conv1(l)
@@ -256,7 +256,7 @@ class GCNet(nn.Module):
 
         out = self.conv20(self.conv19(vback)) + self.deconv36(out)
 
-        out = self.deconv38(self.deconv37(out))
+        out = self.deconv38(self.deconv37(out.cuda(2)))
 
         out = (nn.Softmax(dim=4))(torch.mul(out, -1))
         res = []
@@ -292,7 +292,7 @@ def train_gcnet(epoch):
     for batch_idx, (l, r, truth) in enumerate(train_loader):
         l, r, truth = Variable(l), Variable(r), Variable(truth)
         if cuda_available:
-            l, r, truth = l.cuda(1), r.cuda(1), truth.cuda(0)
+            l, r, truth = l.cuda(1), r.cuda(1), truth.cuda(2)
         optimizer.zero_grad()
         out = net(l, r)
 
