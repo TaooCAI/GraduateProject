@@ -10,6 +10,7 @@ from PIL import Image
 import re
 import numpy as np
 from torch.utils.data import Dataset
+from graphviz import Digraph
 
 
 MAX_D = 192
@@ -74,7 +75,7 @@ class MyDataset(Dataset):
         return l[index, ...], r[index, ...], truth[index, ...]
 
     def __len__(self):
-        return len(self.data)
+        return (self.data[0]).size()[0]
 
     def _make_dataset(self):
         def get_one(child_dir):
@@ -178,19 +179,19 @@ class GCNet(nn.Module):
         super(GCNet, self).__init__()
         self.input_channels = 3
 
-        self.conv1 = conv5x5(self.input_channels, 32).cuda(1)
-        self.conv_down = conv5x5(32, 32).cuda(1)
+        self.conv1 = conv5x5(self.input_channels, 32).cuda(0)
+        self.conv_down = conv5x5(32, 32).cuda(0)
 
-        self.block1 = ResidualBlock(32, 32).cuda(1)
-        self.block2 = ResidualBlock(32, 32).cuda(1)
-        self.block3 = ResidualBlock(32, 32).cuda(1)
-        self.block4 = ResidualBlock(32, 32).cuda(1)
-        self.block5 = ResidualBlock(32, 32).cuda(1)
-        self.block6 = ResidualBlock(32, 32).cuda(1)
-        self.block7 = ResidualBlock(32, 32).cuda(1)
-        self.block8 = ResidualBlock(32, 32).cuda(1)
+        self.block1 = ResidualBlock(32, 32).cuda(0)
+        self.block2 = ResidualBlock(32, 32).cuda(0)
+        self.block3 = ResidualBlock(32, 32).cuda(0)
+        self.block4 = ResidualBlock(32, 32).cuda(0)
+        self.block5 = ResidualBlock(32, 32).cuda(0)
+        self.block6 = ResidualBlock(32, 32).cuda(0)
+        self.block7 = ResidualBlock(32, 32).cuda(0)
+        self.block8 = ResidualBlock(32, 32).cuda(0)
 
-        self.conv2 = nn.Conv2d(32, 32, 3, padding=1).cuda(1)
+        self.conv2 = nn.Conv2d(32, 32, 3, padding=1).cuda(0)
 
         self.conv19 = conv3x3x3_padding(64, 32).cuda(0)
         self.conv20 = conv3x3x3_padding(32, 32).cuda(0)
@@ -217,7 +218,7 @@ class GCNet(nn.Module):
             64, 32, 3, stride=2, output_padding=(1, 0, 0)).cuda(0)
 
         self.deconv37 = nn.ConvTranspose3d(
-            32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(2)
+            32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(1)
         self.deconv38 = nn.ConvTranspose3d(
             32, 1, 3, stride=2, output_padding=(1, 1, 0)).cuda(2)
 
@@ -233,17 +234,17 @@ class GCNet(nn.Module):
         r = self.block8(self.block7(self.block6(self.block5(
             self.block4(self.block3(self.block2(self.block1(r))))))))
         r = self.conv2(r)
-        print("l locates in {} GPU!\n".format(l.get_device()))
-        print("r locates in {} GPU!\n".format(r.get_device()))
+        # print("l locates in {} GPU!\n".format(l.get_device()))
+        # print("r locates in {} GPU!\n".format(r.get_device()))
 
         # v = cost_volume_generation(l, r, 95)
         v = cost_volume_generation(l, r, 46)
-        print("v locates in {} GPU!\n".format(v.get_device()))
+        # print("v locates in {} GPU!\n".format(v.get_device()))
 
         vback = v.cuda(0)
-        print("vback locates in {} GPU!\n".format(vback.get_device()))
+        # print("vback locates in {} GPU!\n".format(vback.get_device()))
         out21 = self.conv21(vback)
-        print("out21 locates in {} GPU!\n".format(out21.get_device()))
+        # print("out21 locates in {} GPU!\n".format(out21.get_device()))
 
         out24 = self.conv24(out21)
         out27 = self.conv27(out24)
@@ -256,11 +257,12 @@ class GCNet(nn.Module):
 
         out = self.conv20(self.conv19(vback)) + self.deconv36(out)
 
-        out = self.deconv38(self.deconv37(out.cuda(2)))
+        out = self.deconv37(out.cuda(1))
+        out = self.deconv38(out.cuda(2))
 
         out = (nn.Softmax(dim=4))(torch.mul(out, -1))
         res = []
-        for i in range(out.size()[2]):
+        for i in range(out.size()[4]):
             if len(res) == 0:
                 res.append(torch.mul(out[:, :, :, :, i], i))
             else:
@@ -286,23 +288,74 @@ def print_param_count():
     print("parameter's count is {}\n".format(count))
 
 
+def make_dot(var, params=None):
+    """ Produces Graphviz representation of PyTorch autograd graph
+    Blue nodes are the Variables that require grad, orange are Tensors
+    saved for backward in torch.autograd.Function
+    Args:
+        var: output Variable
+        params: dict of (name, Variable) to add names to node that
+            require grad (TODO: make optional)
+    """
+    if params is not None:
+        assert isinstance(params.values()[0], Variable)
+        param_map = {id(v): k for k, v in params.items()}
+
+    node_attr = dict(style='filled',
+                     shape='box',
+                     align='left',
+                     fontsize='12',
+                     ranksep='0.1',
+                     height='0.2')
+    dot = Digraph(node_attr=node_attr, graph_attr=dict(size="12,12"))
+    seen = set()
+
+    def size_to_str(size):
+        return '('+(', ').join(['%d' % v for v in size])+')'
+
+    def add_nodes(var):
+        if var not in seen:
+            if torch.is_tensor(var):
+                dot.node(str(id(var)), size_to_str(
+                    var.size()), fillcolor='orange')
+            elif hasattr(var, 'variable'):
+                u = var.variable
+                name = param_map[id(u)] if params is not None else ''
+                node_name = '%s\n %s' % (name, size_to_str(u.size()))
+                dot.node(str(id(var)), node_name, fillcolor='lightblue')
+            else:
+                dot.node(str(id(var)), str(type(var).__name__))
+            seen.add(var)
+            if hasattr(var, 'next_functions'):
+                for u in var.next_functions:
+                    if u[0] is not None:
+                        dot.edge(str(id(u[0])), str(id(var)))
+                        add_nodes(u[0])
+            if hasattr(var, 'saved_tensors'):
+                for t in var.saved_tensors:
+                    dot.edge(str(id(t)), str(id(var)))
+                    add_nodes(t)
+    add_nodes(var.grad_fn)
+    return dot
+
+
 def train_gcnet(epoch):
     net.train()
     print_param_count()
     for batch_idx, (l, r, truth) in enumerate(train_loader):
         l, r, truth = Variable(l), Variable(r), Variable(truth)
         if cuda_available:
-            l, r, truth = l.cuda(1), r.cuda(1), truth.cuda(2)
+            l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(2)
         optimizer.zero_grad()
         out = net(l, r)
 
         loss = F.l1_loss(out, truth)
         loss.backward()
         optimizer.step()
-        if batch_idx % 10 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(truth), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.data[0]))
+        # if (batch_idx + 1) % 10 == 0:
+        print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            epoch, (batch_idx+1) * len(truth), len(train_loader.dataset),
+            100. * (batch_idx+1) / len(train_loader), loss.data[0]))
 
 
 def test_gcnet():
