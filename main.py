@@ -348,6 +348,9 @@ def train_gcnet(epoch):
             l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(2)
         optimizer.zero_grad()
         out = net(l, r)
+        if batch_idx == 0:
+            g = make_dot(out)
+            g.render("net.gv")
 
         loss = F.l1_loss(out, truth)
         loss.backward()
