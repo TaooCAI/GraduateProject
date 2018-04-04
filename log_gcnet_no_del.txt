@@ -1,0 +1,23 @@
+caitao@mcislab-server:~/Documents/PycharmProjects$ python /home/caitao/Documents/PycharmProjects/main.py
+['0004.pfm', '0002.pfm', '0013.pfm', '0005.pfm', '0009.pfm', '0001.pfm', '0012.pfm', '0000.pfm', '0011.pfm', '0010.pfm', '0008.pfm', '0007.pfm', '0006.pfm', '0003.pfm']
+parameter's count is 2900129
+
+Train Epoch: 1 [1/14 (7%)]      Loss: 83.531281
+THCudaCheck FAIL file=/opt/conda/conda-bld/pytorch_1518244507981/work/torch/lib/THC/generic/THCStorage.cu line=58 error=2 : out of memory
+Traceback (most recent call last):
+  File "/home/caitao/Documents/PycharmProjects/main.py", line 314, in <module>
+    train_gcnet(epoch)
+  File "/home/caitao/Documents/PycharmProjects/main.py", line 298, in train_gcnet
+    loss = F.l1_loss(net(l, r), truth)
+  File "/home/caitao/anaconda3/lib/python3.6/site-packages/torch/nn/modules/module.py", line 357, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/caitao/Documents/PycharmProjects/main.py", line 259, in forward
+    out = self.deconv37(out.cuda(1))
+  File "/home/caitao/anaconda3/lib/python3.6/site-packages/torch/nn/modules/module.py", line 357, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/caitao/anaconda3/lib/python3.6/site-packages/torch/nn/modules/conv.py", line 704, in forward
+    output_padding, self.groups, self.dilation)
+  File "/home/caitao/anaconda3/lib/python3.6/site-packages/torch/nn/functional.py", line 224, in conv_transpose3d
+    return f(input, weight, bias)
+RuntimeError: cuda runtime error (2) : out of memory at /opt/conda/conda-bld/pytorch_1518244507981/work/torch/lib/THC/generic/THCStorage.cu:58
+caitao@mcislab-server:~/Documents/PycharmProjects$

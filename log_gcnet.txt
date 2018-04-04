@@ -1,0 +1,163 @@
+caitao@mcislab-server:~/Documents/PycharmProjects$ python /home/caitao/Documents/PycharmProjects/main.py
+['0004.pfm', '0002.pfm', '0013.pfm', '0005.pfm', '0009.pfm', '0001.pfm', '0012.pfm', '0000.pfm', '0011.pfm', '0010.pfm', '0008.pfm', '0007.pfm', '0006.pfm', '0003.pfm']
+parameter's count is 2900129
+
+Train Epoch: 1 [1/14 (7%)]      Loss: 83.529388
+Train Epoch: 1 [2/14 (14%)]     Loss: 83.526947
+Train Epoch: 1 [3/14 (21%)]     Loss: 83.623695
+Train Epoch: 1 [4/14 (29%)]     Loss: 83.529739
+Train Epoch: 1 [5/14 (36%)]     Loss: 83.548149
+Train Epoch: 1 [6/14 (43%)]     Loss: 83.525314
+Train Epoch: 1 [7/14 (50%)]     Loss: 83.599174
+Train Epoch: 1 [8/14 (57%)]     Loss: 83.519753
+Train Epoch: 1 [9/14 (64%)]     Loss: 83.576134
+Train Epoch: 1 [10/14 (71%)]    Loss: 83.558578
+Train Epoch: 1 [11/14 (79%)]    Loss: 83.536850
+Train Epoch: 1 [12/14 (86%)]    Loss: 83.531898
+Train Epoch: 1 [13/14 (93%)]    Loss: 83.528091
+Train Epoch: 1 [14/14 (100%)]   Loss: 83.522331
+parameter's count is 2900129
+
+Train Epoch: 2 [1/14 (7%)]      Loss: 83.523193
+Train Epoch: 2 [2/14 (14%)]     Loss: 83.520454
+Train Epoch: 2 [3/14 (21%)]     Loss: 83.617256
+Train Epoch: 2 [4/14 (29%)]     Loss: 83.523117
+Train Epoch: 2 [5/14 (36%)]     Loss: 83.541519
+Train Epoch: 2 [6/14 (43%)]     Loss: 83.518608
+Train Epoch: 2 [7/14 (50%)]     Loss: 83.592514
+Train Epoch: 2 [8/14 (57%)]     Loss: 83.513016
+Train Epoch: 2 [9/14 (64%)]     Loss: 83.569412
+Train Epoch: 2 [10/14 (71%)]    Loss: 83.551788
+Train Epoch: 2 [11/14 (79%)]    Loss: 83.530014
+Train Epoch: 2 [12/14 (86%)]    Loss: 83.524979
+Train Epoch: 2 [13/14 (93%)]    Loss: 83.521095
+Train Epoch: 2 [14/14 (100%)]   Loss: 83.515160
+parameter's count is 2900129
+
+Train Epoch: 3 [1/14 (7%)]      Loss: 83.516014
+Train Epoch: 3 [2/14 (14%)]     Loss: 83.513161
+Train Epoch: 3 [3/14 (21%)]     Loss: 83.610008
+Train Epoch: 3 [4/14 (29%)]     Loss: 83.515686
+Train Epoch: 3 [5/14 (36%)]     Loss: 83.533974
+Train Epoch: 3 [6/14 (43%)]     Loss: 83.510902
+Train Epoch: 3 [7/14 (50%)]     Loss: 83.584755
+Train Epoch: 3 [8/14 (57%)]     Loss: 83.504997
+Train Epoch: 3 [9/14 (64%)]     Loss: 83.561356
+Train Epoch: 3 [10/14 (71%)]    Loss: 83.543594
+Train Epoch: 3 [11/14 (79%)]    Loss: 83.521599
+Train Epoch: 3 [12/14 (86%)]    Loss: 83.516357
+Train Epoch: 3 [13/14 (93%)]    Loss: 83.512268
+Train Epoch: 3 [14/14 (100%)]   Loss: 83.506050
+parameter's count is 2900129
+
+Train Epoch: 4 [1/14 (7%)]      Loss: 83.506699
+Train Epoch: 4 [2/14 (14%)]     Loss: 83.503609
+Train Epoch: 4 [3/14 (21%)]     Loss: 83.600494
+Train Epoch: 4 [4/14 (29%)]     Loss: 83.505692
+Train Epoch: 4 [5/14 (36%)]     Loss: 83.523788
+Train Epoch: 4 [6/14 (43%)]     Loss: 83.500313
+Train Epoch: 4 [7/14 (50%)]     Loss: 83.574043
+Train Epoch: 4 [8/14 (57%)]     Loss: 83.493797
+Train Epoch: 4 [9/14 (64%)]     Loss: 83.550034
+Train Epoch: 4 [10/14 (71%)]    Loss: 83.531944
+Train Epoch: 4 [11/14 (79%)]    Loss: 83.509529
+Train Epoch: 4 [12/14 (86%)]    Loss: 83.503929
+Train Epoch: 4 [13/14 (93%)]    Loss: 83.499435
+Train Epoch: 4 [14/14 (100%)]   Loss: 83.492706
+parameter's count is 2900129
+
+Train Epoch: 5 [1/14 (7%)]      Loss: 83.492958
+Train Epoch: 5 [2/14 (14%)]     Loss: 83.489410
+Train Epoch: 5 [3/14 (21%)]     Loss: 83.586151
+Train Epoch: 5 [4/14 (29%)]     Loss: 83.490601
+Train Epoch: 5 [5/14 (36%)]     Loss: 83.508224
+Train Epoch: 5 [6/14 (43%)]     Loss: 83.484070
+Train Epoch: 5 [7/14 (50%)]     Loss: 83.557480
+Train Epoch: 5 [8/14 (57%)]     Loss: 83.476395
+Train Epoch: 5 [9/14 (64%)]     Loss: 83.532234
+Train Epoch: 5 [10/14 (71%)]    Loss: 83.513557
+Train Epoch: 5 [11/14 (79%)]    Loss: 83.490326
+Train Epoch: 5 [12/14 (86%)]    Loss: 83.483971
+Train Epoch: 5 [13/14 (93%)]    Loss: 83.478745
+Train Epoch: 5 [14/14 (100%)]   Loss: 83.471077
+parameter's count is 2900129
+
+Train Epoch: 6 [1/14 (7%)]      Loss: 83.470490
+Train Epoch: 6 [2/14 (14%)]     Loss: 83.466057
+Train Epoch: 6 [3/14 (21%)]     Loss: 83.562340
+Train Epoch: 6 [4/14 (29%)]     Loss: 83.465416
+Train Epoch: 6 [5/14 (36%)]     Loss: 83.482010
+Train Epoch: 6 [6/14 (43%)]     Loss: 83.456566
+Train Epoch: 6 [7/14 (50%)]     Loss: 83.529144
+Train Epoch: 6 [8/14 (57%)]     Loss: 83.446487
+Train Epoch: 6 [9/14 (64%)]     Loss: 83.501335
+Train Epoch: 6 [10/14 (71%)]    Loss: 83.481300
+Train Epoch: 6 [11/14 (79%)]    Loss: 83.456390
+Train Epoch: 6 [12/14 (86%)]    Loss: 83.448402
+Train Epoch: 6 [13/14 (93%)]    Loss: 83.441551
+Train Epoch: 6 [14/14 (100%)]   Loss: 83.431931
+parameter's count is 2900129
+
+Train Epoch: 7 [1/14 (7%)]      Loss: 83.429428
+Train Epoch: 7 [2/14 (14%)]     Loss: 83.422951
+Train Epoch: 7 [3/14 (21%)]     Loss: 83.517845
+Train Epoch: 7 [4/14 (29%)]     Loss: 83.418022
+Train Epoch: 7 [5/14 (36%)]     Loss: 83.432144
+Train Epoch: 7 [6/14 (43%)]     Loss: 83.403908
+Train Epoch: 7 [7/14 (50%)]     Loss: 83.474144
+Train Epoch: 7 [8/14 (57%)]     Loss: 83.388100
+Train Epoch: 7 [9/14 (64%)]     Loss: 83.440063
+Train Epoch: 7 [10/14 (71%)]    Loss: 83.416687
+Train Epoch: 7 [11/14 (79%)]    Loss: 83.387802
+Train Epoch: 7 [12/14 (86%)]    Loss: 83.375771
+Train Epoch: 7 [13/14 (93%)]    Loss: 83.364754
+Train Epoch: 7 [14/14 (100%)]   Loss: 83.350403
+parameter's count is 2900129
+
+Train Epoch: 8 [1/14 (7%)]      Loss: 83.342903
+Train Epoch: 8 [2/14 (14%)]     Loss: 83.331215
+Train Epoch: 8 [3/14 (21%)]     Loss: 83.421806
+Train Epoch: 8 [4/14 (29%)]     Loss: 83.314903
+Train Epoch: 8 [5/14 (36%)]     Loss: 83.322258
+Train Epoch: 8 [6/14 (43%)]     Loss: 83.286880
+Train Epoch: 8 [7/14 (50%)]     Loss: 83.350327
+Train Epoch: 8 [8/14 (57%)]     Loss: 83.255730
+Train Epoch: 8 [9/14 (64%)]     Loss: 83.298981
+Train Epoch: 8 [10/14 (71%)]    Loss: 83.266167
+Train Epoch: 8 [11/14 (79%)]    Loss: 83.226639
+Train Epoch: 8 [12/14 (86%)]    Loss: 83.203278
+Train Epoch: 8 [13/14 (93%)]    Loss: 83.180443
+Train Epoch: 8 [14/14 (100%)]   Loss: 83.152756
+parameter's count is 2900129
+
+Train Epoch: 9 [1/14 (7%)]      Loss: 83.130737
+Train Epoch: 9 [2/14 (14%)]     Loss: 83.103836
+Train Epoch: 9 [3/14 (21%)]     Loss: 83.180351
+Train Epoch: 9 [4/14 (29%)]     Loss: 83.053131
+Train Epoch: 9 [5/14 (36%)]     Loss: 83.040543
+Train Epoch: 9 [6/14 (43%)]     Loss: 82.982620
+Train Epoch: 9 [7/14 (50%)]     Loss: 83.024696
+Train Epoch: 9 [8/14 (57%)]     Loss: 82.901688
+Train Epoch: 9 [9/14 (64%)]     Loss: 82.916832
+Train Epoch: 9 [10/14 (71%)]    Loss: 82.851448
+Train Epoch: 9 [11/14 (79%)]    Loss: 82.775566
+Train Epoch: 9 [12/14 (86%)]    Loss: 82.711594
+Train Epoch: 9 [13/14 (93%)]    Loss: 82.643509
+Train Epoch: 9 [14/14 (100%)]   Loss: 82.565094
+parameter's count is 2900129
+
+Train Epoch: 10 [1/14 (7%)]     Loss: 82.485703
+Train Epoch: 10 [2/14 (14%)]    Loss: 82.391685
+Train Epoch: 10 [3/14 (21%)]    Loss: 82.399544
+Train Epoch: 10 [4/14 (29%)]    Loss: 82.178642
+Train Epoch: 10 [5/14 (36%)]    Loss: 82.065720
+Train Epoch: 10 [6/14 (43%)]    Loss: 81.882683
+Train Epoch: 10 [7/14 (50%)]    Loss: 81.790680
+Train Epoch: 10 [8/14 (57%)]    Loss: 81.491905
+Train Epoch: 10 [9/14 (64%)]    Loss: 81.303764
+Train Epoch: 10 [10/14 (71%)]   Loss: 80.984070
+Train Epoch: 10 [11/14 (79%)]   Loss: 80.586639
+Train Epoch: 10 [12/14 (86%)]   Loss: 80.097076
+Train Epoch: 10 [13/14 (93%)]   Loss: 79.448082
+Train Epoch: 10 [14/14 (100%)]  Loss: 78.532509
+caitao@mcislab-server:~/Documents/PycharmProjects$

@@ -302,13 +302,13 @@ def train_gcnet(epoch):
         print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
             epoch, (batch_idx+1) * len(truth), len(train_loader.dataset),
             100. * (batch_idx+1) / len(train_loader), loss.data[0]))
-        torch.cuda.empty_cache()
+        del loss, l, r, truth
 
 def test_gcnet():
     pass
 
 
-epochs = 1
+epochs = 10
 
 for epoch in range(1, epochs + 1):
     train_gcnet(epoch)

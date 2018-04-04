@@ -1,0 +1,93 @@
+caitao@mcislab-server:~/Documents/PycharmProjects$ python /home/caitao/Documents/PycharmProjects/main.py
+['0004.pfm', '0002.pfm', '0013.pfm', '0005.pfm', '0009.pfm', '0001.pfm', '0012.pfm', '0000.pfm', '0011.pfm', '0010.pfm', '0008.pfm', '0007.pfm', '0006.pfm', '0003.pfm']
+parameter's count is 2900129
+
+Train Epoch: 1 [2/14 (14%)]     Loss: 83.529404
+Train Epoch: 1 [4/14 (29%)]     Loss: 83.578461
+Train Epoch: 1 [6/14 (43%)]     Loss: 83.539337
+Train Epoch: 1 [8/14 (57%)]     Loss: 83.562836
+Train Epoch: 1 [10/14 (71%)]    Loss: 83.571320
+Train Epoch: 1 [12/14 (86%)]    Loss: 83.539268
+Train Epoch: 1 [14/14 (100%)]   Loss: 83.530815
+parameter's count is 2900129
+
+Train Epoch: 2 [2/14 (14%)]     Loss: 83.528198
+Train Epoch: 2 [4/14 (29%)]     Loss: 83.577179
+Train Epoch: 2 [6/14 (43%)]     Loss: 83.538002
+Train Epoch: 2 [8/14 (57%)]     Loss: 83.561485
+Train Epoch: 2 [10/14 (71%)]    Loss: 83.569954
+Train Epoch: 2 [12/14 (86%)]    Loss: 83.537903
+Train Epoch: 2 [14/14 (100%)]   Loss: 83.529465
+parameter's count is 2900129
+
+Train Epoch: 3 [2/14 (14%)]     Loss: 83.526848
+Train Epoch: 3 [4/14 (29%)]     Loss: 83.575836
+Train Epoch: 3 [6/14 (43%)]     Loss: 83.536667
+Train Epoch: 3 [8/14 (57%)]     Loss: 83.560143
+Train Epoch: 3 [10/14 (71%)]    Loss: 83.568611
+Train Epoch: 3 [12/14 (86%)]    Loss: 83.536583
+Train Epoch: 3 [14/14 (100%)]   Loss: 83.528145
+parameter's count is 2900129
+
+Train Epoch: 4 [2/14 (14%)]     Loss: 83.525520
+Train Epoch: 4 [4/14 (29%)]     Loss: 83.574524
+Train Epoch: 4 [6/14 (43%)]     Loss: 83.535355
+Train Epoch: 4 [8/14 (57%)]     Loss: 83.558823
+Train Epoch: 4 [10/14 (71%)]    Loss: 83.567291
+Train Epoch: 4 [12/14 (86%)]    Loss: 83.535271
+Train Epoch: 4 [14/14 (100%)]   Loss: 83.526825
+parameter's count is 2900129
+
+Train Epoch: 5 [2/14 (14%)]     Loss: 83.524208
+Train Epoch: 5 [4/14 (29%)]     Loss: 83.573196
+Train Epoch: 5 [6/14 (43%)]     Loss: 83.534027
+Train Epoch: 5 [8/14 (57%)]     Loss: 83.557487
+Train Epoch: 5 [10/14 (71%)]    Loss: 83.565956
+Train Epoch: 5 [12/14 (86%)]    Loss: 83.533943
+Train Epoch: 5 [14/14 (100%)]   Loss: 83.525497
+parameter's count is 2900129
+
+Train Epoch: 6 [2/14 (14%)]     Loss: 83.522858
+Train Epoch: 6 [4/14 (29%)]     Loss: 83.571838
+Train Epoch: 6 [6/14 (43%)]     Loss: 83.532669
+Train Epoch: 6 [8/14 (57%)]     Loss: 83.556107
+Train Epoch: 6 [10/14 (71%)]    Loss: 83.564560
+Train Epoch: 6 [12/14 (86%)]    Loss: 83.532562
+Train Epoch: 6 [14/14 (100%)]   Loss: 83.524094
+parameter's count is 2900129
+
+Train Epoch: 7 [2/14 (14%)]     Loss: 83.521446
+Train Epoch: 7 [4/14 (29%)]     Loss: 83.570419
+Train Epoch: 7 [6/14 (43%)]     Loss: 83.531219
+Train Epoch: 7 [8/14 (57%)]     Loss: 83.554642
+Train Epoch: 7 [10/14 (71%)]    Loss: 83.563087
+Train Epoch: 7 [12/14 (86%)]    Loss: 83.531082
+Train Epoch: 7 [14/14 (100%)]   Loss: 83.522591
+parameter's count is 2900129
+
+Train Epoch: 8 [2/14 (14%)]     Loss: 83.519928
+Train Epoch: 8 [4/14 (29%)]     Loss: 83.568886
+Train Epoch: 8 [6/14 (43%)]     Loss: 83.529663
+Train Epoch: 8 [8/14 (57%)]     Loss: 83.553062
+Train Epoch: 8 [10/14 (71%)]    Loss: 83.561501
+Train Epoch: 8 [12/14 (86%)]    Loss: 83.529472
+Train Epoch: 8 [14/14 (100%)]   Loss: 83.520958
+parameter's count is 2900129
+
+Train Epoch: 9 [2/14 (14%)]     Loss: 83.518280
+Train Epoch: 9 [4/14 (29%)]     Loss: 83.567215
+Train Epoch: 9 [6/14 (43%)]     Loss: 83.527962
+Train Epoch: 9 [8/14 (57%)]     Loss: 83.551338
+Train Epoch: 9 [10/14 (71%)]    Loss: 83.559731
+Train Epoch: 9 [12/14 (86%)]    Loss: 83.527702
+Train Epoch: 9 [14/14 (100%)]   Loss: 83.519165
+parameter's count is 2900129
+
+Train Epoch: 10 [2/14 (14%)]    Loss: 83.516457
+Train Epoch: 10 [4/14 (29%)]    Loss: 83.565361
+Train Epoch: 10 [6/14 (43%)]    Loss: 83.526093
+Train Epoch: 10 [8/14 (57%)]    Loss: 83.549423
+Train Epoch: 10 [10/14 (71%)]   Loss: 83.557770
+Train Epoch: 10 [12/14 (86%)]   Loss: 83.525719
+Train Epoch: 10 [14/14 (100%)]  Loss: 83.517151
+caitao@mcislab-server:~/Documents/PycharmProjects$
