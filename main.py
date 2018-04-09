@@ -13,9 +13,10 @@ from torch.utils.data import Dataset
 
 
 MAX_D = 192
-root_path = "/home/caitao/Downloads/tmp_data/data/a_rain_of_stones_x2"
-truth_path = "/home/caitao/Downloads/tmp_data/groundtruth/a_rain_of_stones_x2/left"
+ROOT_PATH = "/home/caitao/Downloads/tmp_data/data/a_rain_of_stones_x2"
+TRUTH_PATH = "/home/caitao/Downloads/tmp_data/groundtruth/a_rain_of_stones_x2/left"
 cuda_available = False
+epochs = 10
 
 
 def readPFM(file):
@@ -81,7 +82,7 @@ class MyDataset(Dataset):
             data_dir = os.path.join(self.root_path, child_dir)
             images_list = os.listdir(data_dir)
             ans = []
-            for i, filename in enumerate(images_list):
+            for _, filename in enumerate(images_list):
                 image_path = os.path.join(data_dir, filename)
                 image = Image.open(image_path)
                 transform = self.transform
@@ -95,7 +96,7 @@ class MyDataset(Dataset):
 
         truth_namelist = [x[:x.rindex('.') + 1] + "pfm" for x in imglist]
         ans = []
-        for ii, truth_name in enumerate(truth_namelist):
+        for _, truth_name in enumerate(truth_namelist):
             abso_path = os.path.join(self.truth_path, truth_name)
             onetruth, _ = readPFM(abso_path)
             onetruth = torch.FloatTensor(onetruth.tolist())
@@ -104,12 +105,6 @@ class MyDataset(Dataset):
         truth = torch.stack(ans, dim=0)
         print(truth_namelist)
         return l, r, truth
-
-
-train_loader = torch.utils.data.DataLoader(MyDataset(root_path, truth_path, transform=transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])), batch_size=1)
 
 
 def conv5x5(in_channels, out_channels):
@@ -152,7 +147,7 @@ def cost_volume_generation(l, r, max_disparity):
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
-        super(ResidualBlock, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels,
                                3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(out_channels)
@@ -175,111 +170,121 @@ class ResidualBlock(nn.Module):
 
 class GCNet(nn.Module):
     def __init__(self):
-        super(GCNet, self).__init__()
-        self.input_channels = 3
+        super().__init__()
 
-        self.conv1 = conv5x5(self.input_channels, 32).cuda(0)
-        self.conv_down = conv5x5(32, 32).cuda(0)
+        with torch.cuda.device(0):
+            self.down_sample1 = conv5x5(3, 32)
+            self.down_sample2 = conv5x5(32, 32)
 
-        self.block1 = ResidualBlock(32, 32).cuda(0)
-        self.block2 = ResidualBlock(32, 32).cuda(0)
-        self.block3 = ResidualBlock(32, 32).cuda(0)
-        self.block4 = ResidualBlock(32, 32).cuda(0)
-        self.block5 = ResidualBlock(32, 32).cuda(0)
-        self.block6 = ResidualBlock(32, 32).cuda(0)
-        self.block7 = ResidualBlock(32, 32).cuda(0)
-        self.block8 = ResidualBlock(32, 32).cuda(0)
+            self.block1 = ResidualBlock(32, 32)
+            self.block2 = ResidualBlock(32, 32)
+            self.block3 = ResidualBlock(32, 32)
+            self.block4 = ResidualBlock(32, 32)
+            self.block5 = ResidualBlock(32, 32)
+            self.block6 = ResidualBlock(32, 32)
+            self.block7 = ResidualBlock(32, 32)
+            self.block8 = ResidualBlock(32, 32)
 
-        self.conv2 = nn.Conv2d(32, 32, 3, padding=1).cuda(0)
+            self.conv = nn.Conv2d(32, 32, 3, padding=1)
 
-        self.conv19 = conv3x3x3_padding(64, 32).cuda(0)
-        self.conv20 = conv3x3x3_padding(32, 32).cuda(0)
-        self.conv21 = conv3x3x3(64, 64).cuda(0)
-        self.conv22 = conv3x3x3_padding(64, 64).cuda(0)
-        self.conv23 = conv3x3x3_padding(64, 64).cuda(0)
-        self.conv24 = conv3x3x3(64, 64).cuda(0)
-        self.conv25 = conv3x3x3_padding(64, 64).cuda(0)
-        self.conv26 = conv3x3x3_padding(64, 64).cuda(0)
-        self.conv27 = conv3x3x3(64, 64).cuda(0)
-        self.conv28 = conv3x3x3_padding(64, 64).cuda(0)
-        self.conv29 = conv3x3x3_padding(64, 64).cuda(0)
-        self.conv30 = conv3x3x3(64, 128).cuda(0)
-        self.conv31 = conv3x3x3_padding(128, 128).cuda(0)
-        self.conv32 = conv3x3x3_padding(128, 128).cuda(0)
+            self.conv19 = conv3x3x3_padding(64, 32)
+            self.conv20 = conv3x3x3_padding(32, 32)
+            self.enc1 = conv3x3x3(64, 64)
+            self.conv22 = conv3x3x3_padding(64, 64)
+            self.conv23 = conv3x3x3_padding(64, 64)
+            self.enc2 = conv3x3x3(64, 64)
+            self.conv25 = conv3x3x3_padding(64, 64)
+            self.conv26 = conv3x3x3_padding(64, 64)
+            self.enc3 = conv3x3x3(64, 64)
+            self.conv28 = conv3x3x3_padding(64, 64)
+            self.conv29 = conv3x3x3_padding(64, 64)
+            self.enc4 = conv3x3x3(64, 128)
+            self.conv31 = conv3x3x3_padding(128, 128)
+            self.conv32 = conv3x3x3_padding(128, 128)
 
-        self.deconv33 = nn.ConvTranspose3d(
-            128, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda(0)
-        self.deconv34 = nn.ConvTranspose3d(
-            64, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda(0)
-        self.deconv35 = nn.ConvTranspose3d(
-            64, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda(0)
-        self.deconv36 = nn.ConvTranspose3d(
-            64, 32, 3, stride=2, output_padding=(1, 0, 0)).cuda(0)
+            self.dec4 = nn.ConvTranspose3d(
+                128, 64, 3, stride=2, output_padding=(0, 0, 0))
+            self.dec3 = nn.ConvTranspose3d(
+                64, 64, 3, stride=2, output_padding=(1, 0, 0))
+            self.dec2 = nn.ConvTranspose3d(
+                64, 64, 3, stride=2, output_padding=(1, 0, 0))
+            self.dec1 = nn.ConvTranspose3d(
+                64, 32, 3, stride=2, output_padding=(1, 0, 0))
 
-        self.deconv37 = nn.ConvTranspose3d(
+        self.up_sample2 = nn.ConvTranspose3d(
             32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(1)
-        self.deconv38 = nn.ConvTranspose3d(
+        self.up_sample1 = nn.ConvTranspose3d(
             32, 1, 3, stride=2, output_padding=(1, 1, 0)).cuda(2)
 
     def forward(self, l, r):
-        l = self.conv1(l)
-        l = self.conv_down(l)
-        l = self.block8(self.block7(self.block6(self.block5(
-            self.block4(self.block3(self.block2(self.block1(l))))))))
-        l = self.conv2(l)
+        l = self.down_sample1(l)
+        l = self.down_sample2(l)
+        l = self.block1(l)
+        l = self.block2(l)
+        l = self.block3(l)
+        l = self.block4(l)
+        l = self.block6(l)
+        l = self.block6(l)
+        l = self.block7(l)
+        l = self.block8(l)
+        l = self.conv(l)
 
-        r = self.conv1(r)
-        r = self.conv_down(r)
-        r = self.block8(self.block7(self.block6(self.block5(
-            self.block4(self.block3(self.block2(self.block1(r))))))))
-        r = self.conv2(r)
-        # print("l locates in {} GPU!\n".format(l.get_device()))
-        # print("r locates in {} GPU!\n".format(r.get_device()))
+        r = self.down_sample1(r)
+        r = self.down_sample2(r)
+        r = self.block1(r)
+        r = self.block2(r)
+        r = self.block3(r)
+        r = self.block4(r)
+        r = self.block5(r)
+        r = self.block6(r)
+        r = self.block7(r)
+        r = self.block8(r)
+        r = self.conv(r)
 
-        # v = cost_volume_generation(l, r, 95)
         v = cost_volume_generation(l, r, 46)
-        # print("v locates in {} GPU!\n".format(v.get_device()))
 
-        vback = v.cuda(0)
-        # print("vback locates in {} GPU!\n".format(vback.get_device()))
-        out21 = self.conv21(vback)
-        # print("out21 locates in {} GPU!\n".format(out21.get_device()))
+        out21 = self.enc1(v)
+        out24 = self.enc2(out21)
+        out27 = self.enc3(out24)
 
-        out24 = self.conv24(out21)
-        out27 = self.conv27(out24)
+        residual = self.enc4(out27)
+        residual = self.conv31(residual)
+        residual = self.conv32(residual)
+        residual = self.dec4(residual)
+        x1 = self.conv28(out27)
+        x1 = self.conv29(x1)
+        residual += x1
 
-        out = self.conv29(self.conv28(out27)) + \
-            self.deconv33(self.conv32(self.conv31(self.conv30(out27))))
-        out = self.conv26(self.conv25(out24)) + self.deconv34(out)
+        residual = self.dec3(residual)
+        x2 = self.conv25(out24)
+        x2 = self.conv26(x2)
+        residual += x2
 
-        out = self.conv23(self.conv22(out21)) + self.deconv35(out)
+        residual = self.dec2(residual)
+        x3 = self.conv22(out21)
+        x3 = self.conv23(x3)
+        residual += x3
 
-        out = self.conv20(self.conv19(vback)) + self.deconv36(out)
+        residual = self.dec1(residual)
+        x4 = self.conv19(v)
+        x4 = self.conv20(x4)
+        out = residual + x4
 
-        out = self.deconv37(out.cuda(1))
-        out = self.deconv38(out.cuda(2))
+        out = self.up_sample2(out.cuda(1))
+        out = self.up_sample1(out.cuda(2))
 
         out = (nn.Softmax(dim=4))(torch.mul(out, -1))
-        res = []
-        for i in range(out.size()[4]):
-            if len(res) == 0:
-                res.append(torch.mul(out[:, :, :, :, i], i))
-            else:
-                res[0] += torch.mul(out[:, :, :, :, i], i)
-        out = torch.squeeze(res[0], dim=1)
+        length = out.data.size()[4]
+        res = torch.mul(out[:, :, :, :, 1], 1)
+        for i in range(2, length):
+            res += torch.mul(out[:, :, :, :, i], i)
+        out = torch.squeeze(res, dim=1)
         return out
 
 
-net = GCNet()
-
-if torch.cuda.is_available():
-    cuda_available = True
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.5)
-
-
-def print_param_count():
+def print_param_count(model):
     count = 0
-    for param in net.parameters():
+    for param in model.parameters():
         ans = 1
         for num in param.size():
             ans = ans * num
@@ -287,29 +292,45 @@ def print_param_count():
     print("parameter's count is {}\n".format(count))
 
 
-def train_gcnet(epoch):
-    net.train()
-    print_param_count()
-    for batch_idx, (l, r, truth) in enumerate(train_loader):
-        l, r, truth = Variable(l), Variable(r), Variable(truth)
-        if cuda_available:
-            l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(2)
-        optimizer.zero_grad()
-        loss = F.l1_loss(net(l, r), truth)
-        loss.backward()
-        optimizer.step()
-        # if (batch_idx + 1) % 10 == 0:
-        print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-            epoch, (batch_idx+1) * len(truth), len(train_loader.dataset),
-            100. * (batch_idx+1) / len(train_loader), loss.data[0]))
-        del loss, l, r, truth
+def train(model, epoch):
+    model.train()
+    print_param_count(model)
+
+    train_loader = torch.utils.data.DataLoader(MyDataset(ROOT_PATH, TRUTH_PATH, transform=transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])), batch_size=1)
+
+    criterion = nn.L1Loss()
+
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
+
+    for epoch in range(1, epochs+1):
+        for batch_idx, (l, r, truth) in enumerate(train_loader):
+            if cuda_available:
+                l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(2)
+            l, r, truth = Variable(l), Variable(r), Variable(truth)
+
+            outputs = model(l, r)
+            optimizer.zero_grad()
+            loss = criterion(outputs, truth)
+            loss.backward()
+            optimizer.step()
+            # if (batch_idx + 1) % 10 == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, (batch_idx+1) * len(truth), len(train_loader.dataset),
+                100. * (batch_idx+1) / len(train_loader), loss.data[0]))
+            # del loss, l, r, truth
+
 
 def test_gcnet():
     pass
 
 
-epochs = 10
+def main():
+    model = GCNet()
+    train(model, epochs)
 
-for epoch in range(1, epochs + 1):
-    train_gcnet(epoch)
-    test_gcnet()
+
+if __name__ == "__main__":
+    main()
