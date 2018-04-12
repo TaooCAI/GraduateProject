@@ -214,10 +214,12 @@ class GCNet(nn.Module):
                 128, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda()
             self.dec3 = nn.ConvTranspose3d(
                 64, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda()
-            self.dec2 = nn.ConvTranspose3d(
-                64, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda()
-            self.dec1 = nn.ConvTranspose3d(
-                64, 1, 3, stride=2, output_padding=(0, 1, 1)).cuda()
+        self.dec2 = nn.ConvTranspose3d(
+            64, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda(1)
+        self.dec1 = nn.ConvTranspose3d(
+            64, 1, 3, stride=2, output_padding=(0, 1, 1)).cuda(2)
+        # self.output = nn.ConvTranspose3d(
+        #     32, 1, 1, stride=1, output_padding=(0, 0, 0)).cuda()
 
         # self.up_sample2 = nn.ConvTranspose3d(
         #     32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(1)
@@ -270,15 +272,17 @@ class GCNet(nn.Module):
         x2 = self.conv26(x2)
         residual += x2
 
-        residual = self.dec2(residual)
+        residual = self.dec2(residual.cuda(1))
         x3 = self.conv22(out21)
         x3 = self.conv23(x3)
-        residual += x3
+        residual += x3.cuda(1)
 
-        residual = self.dec1(residual)
+        residual = self.dec1(residual.cuda(2))
         x4 = self.conv19(v)
         x4 = self.conv20(x4)
-        out = residual + x4
+        out = residual + x4.cuda(2)
+
+        # out = self.output(out)
 
         # out = out.cuda(1)
         # out = self.up_sample2(out)
@@ -326,7 +330,7 @@ def train(model, epoch):
     for epoch in range(1, epochs + 1):
         for batch_idx, (l, r, truth) in enumerate(train_loader):
             if cuda_available:
-                l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(0)
+                l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(2)
             l, r, truth = Variable(l), Variable(r), Variable(truth)
 
             outputs = model(l, r)
