@@ -10,11 +10,12 @@ from PIL import Image
 import re
 import numpy as np
 from torch.utils.data import Dataset
-
+import gc
+import scipy.io as sio
 
 MAX_D = 192
 ROOT_PATH = "/home/caitao/Downloads/tmp_data/data/a_rain_of_stones_x2"
-TRUTH_PATH = "/home/caitao/Downloads/tmp_data/groundtruth/a_rain_of_stones_x2/left"
+TRUTH_PATH = "/home/caitao/Downloads/tmp_data/groundtruth/a_rain_of_stones_x2/mat_resize_0.25"
 cuda_available = False
 epochs = 10
 
@@ -58,7 +59,11 @@ def readPFM(file):
 
 
 class MyDataset(Dataset):
-    def __init__(self, root_path, truth_path, transform=None, target_transform=None):
+    def __init__(self,
+                 root_path,
+                 truth_path,
+                 transform=None,
+                 target_transform=None):
         super(MyDataset, self).__init__()
         self.root_path = root_path
         self.truth_path = truth_path
@@ -68,7 +73,7 @@ class MyDataset(Dataset):
 
     def __getitem__(self, index):
         if index < 0 or index >= self.__len__():
-            raise(Exception("index out of range"))
+            raise (Exception("index out of range"))
         l = self.data[0]
         r = self.data[1]
         truth = self.data[2]
@@ -90,16 +95,18 @@ class MyDataset(Dataset):
                 ans.append(image)
             res = torch.stack(ans, dim=0)
             return res, images_list
+
         l, imglist = get_one("left")
         r, imglist_r = get_one("right")
         assert imglist == imglist_r
 
-        truth_namelist = [x[:x.rindex('.') + 1] + "pfm" for x in imglist]
+        truth_namelist = [x[:x.rindex('.') + 1] + "pfm.mat" for x in imglist]
         ans = []
         for _, truth_name in enumerate(truth_namelist):
             abso_path = os.path.join(self.truth_path, truth_name)
-            onetruth, _ = readPFM(abso_path)
-            onetruth = torch.FloatTensor(onetruth.tolist())
+            # onetruth, _ = readPFM(abso_path)
+            onetruth = sio.loadmat(abso_path)['tmp']
+            onetruth = torch.FloatTensor(onetruth)
             ans.append(onetruth)
 
         truth = torch.stack(ans, dim=0)
@@ -107,35 +114,36 @@ class MyDataset(Dataset):
         return l, r, truth
 
 
+def down_sample(in_channels, out_channels):
+    return nn.Sequential(
+        nn.Conv2d(
+            in_channels, out_channels, kernel_size=5, stride=2, padding=1),
+        nn.BatchNorm2d(out_channels), nn.ReLU())
+
+
 def conv5x5(in_channels, out_channels):
     return nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, kernel_size=5,
-                  stride=2, padding=1),
-        nn.BatchNorm2d(out_channels),
-        nn.ReLU()
-    )
+        nn.Conv2d(
+            in_channels, out_channels, kernel_size=5, stride=1, padding=2),
+        nn.BatchNorm2d(out_channels), nn.ReLU())
 
 
 def conv3x3x3(in_channels, out_channels):
     return nn.Sequential(
         nn.Conv3d(in_channels, out_channels, kernel_size=3, stride=2),
-        nn.BatchNorm3d(out_channels),
-        nn.ReLU()
-    )
+        nn.BatchNorm3d(out_channels), nn.ReLU())
 
 
 def conv3x3x3_padding(in_channels, out_channels):
     return nn.Sequential(
-        nn.Conv3d(in_channels, out_channels,
-                  kernel_size=3, stride=1, padding=1),
-        nn.BatchNorm3d(out_channels),
-        nn.ReLU()
-    )
+        nn.Conv3d(
+            in_channels, out_channels, kernel_size=3, stride=1, padding=1),
+        nn.BatchNorm3d(out_channels), nn.ReLU())
 
 
 def cost_volume_generation(l, r, max_disparity):
     ans = []
-    ans.append(torch.cat([l, r], dim=1))
+    # ans.append(torch.cat([l, r], dim=1))
     for t in range(1, max_disparity + 1):
         ans.append(
             torch.cat([l, torch.cat([r[..., t:], r[..., :t]], dim=3)], dim=1))
@@ -148,8 +156,8 @@ def cost_volume_generation(l, r, max_disparity):
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels,
-                               3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(
+            in_channels, out_channels, 3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(
@@ -173,52 +181,53 @@ class GCNet(nn.Module):
         super().__init__()
 
         with torch.cuda.device(0):
-            self.down_sample1 = conv5x5(3, 32)
-            self.down_sample2 = conv5x5(32, 32)
+            # self.down_sample1 = conv5x5(3, 32).cuda()
+            # self.down_sample2 = conv5x5(32, 32).cuda()
+            self.fea = conv5x5(3, 32).cuda()
+            self.block1 = ResidualBlock(32, 32).cuda()
+            self.block2 = ResidualBlock(32, 32).cuda()
+            self.block3 = ResidualBlock(32, 32).cuda()
+            self.block4 = ResidualBlock(32, 32).cuda()
+            self.block5 = ResidualBlock(32, 32).cuda()
+            self.block6 = ResidualBlock(32, 32).cuda()
+            self.block7 = ResidualBlock(32, 32).cuda()
+            self.block8 = ResidualBlock(32, 32).cuda()
 
-            self.block1 = ResidualBlock(32, 32)
-            self.block2 = ResidualBlock(32, 32)
-            self.block3 = ResidualBlock(32, 32)
-            self.block4 = ResidualBlock(32, 32)
-            self.block5 = ResidualBlock(32, 32)
-            self.block6 = ResidualBlock(32, 32)
-            self.block7 = ResidualBlock(32, 32)
-            self.block8 = ResidualBlock(32, 32)
+            self.conv = nn.Conv2d(32, 32, 3, padding=1).cuda()
 
-            self.conv = nn.Conv2d(32, 32, 3, padding=1)
-
-            self.conv19 = conv3x3x3_padding(64, 32)
-            self.conv20 = conv3x3x3_padding(32, 32)
-            self.enc1 = conv3x3x3(64, 64)
-            self.conv22 = conv3x3x3_padding(64, 64)
-            self.conv23 = conv3x3x3_padding(64, 64)
-            self.enc2 = conv3x3x3(64, 64)
-            self.conv25 = conv3x3x3_padding(64, 64)
-            self.conv26 = conv3x3x3_padding(64, 64)
-            self.enc3 = conv3x3x3(64, 64)
-            self.conv28 = conv3x3x3_padding(64, 64)
-            self.conv29 = conv3x3x3_padding(64, 64)
-            self.enc4 = conv3x3x3(64, 128)
-            self.conv31 = conv3x3x3_padding(128, 128)
-            self.conv32 = conv3x3x3_padding(128, 128)
+            self.conv19 = conv3x3x3_padding(64, 32).cuda()
+            self.conv20 = conv3x3x3_padding(32, 1).cuda()
+            self.enc1 = conv3x3x3(64, 64).cuda()
+            self.conv22 = conv3x3x3_padding(64, 64).cuda()
+            self.conv23 = conv3x3x3_padding(64, 64).cuda()
+            self.enc2 = conv3x3x3(64, 64).cuda()
+            self.conv25 = conv3x3x3_padding(64, 64).cuda()
+            self.conv26 = conv3x3x3_padding(64, 64).cuda()
+            self.enc3 = conv3x3x3(64, 64).cuda()
+            self.conv28 = conv3x3x3_padding(64, 64).cuda()
+            self.conv29 = conv3x3x3_padding(64, 64).cuda()
+            self.enc4 = conv3x3x3(64, 128).cuda()
+            self.conv31 = conv3x3x3_padding(128, 128).cuda()
+            self.conv32 = conv3x3x3_padding(128, 128).cuda()
 
             self.dec4 = nn.ConvTranspose3d(
-                128, 64, 3, stride=2, output_padding=(0, 0, 0))
+                128, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda()
             self.dec3 = nn.ConvTranspose3d(
-                64, 64, 3, stride=2, output_padding=(1, 0, 0))
+                64, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda()
             self.dec2 = nn.ConvTranspose3d(
-                64, 64, 3, stride=2, output_padding=(1, 0, 0))
+                64, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda()
             self.dec1 = nn.ConvTranspose3d(
-                64, 32, 3, stride=2, output_padding=(1, 0, 0))
+                64, 1, 3, stride=2, output_padding=(0, 1, 1)).cuda()
 
-        self.up_sample2 = nn.ConvTranspose3d(
-            32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(1)
-        self.up_sample1 = nn.ConvTranspose3d(
-            32, 1, 3, stride=2, output_padding=(1, 1, 0)).cuda(2)
+        # self.up_sample2 = nn.ConvTranspose3d(
+        #     32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(1)
+        # self.up_sample1 = nn.ConvTranspose3d(
+        #     32, 1, 3, stride=2, output_padding=(1, 1, 0)).cuda(2)
 
     def forward(self, l, r):
-        l = self.down_sample1(l)
-        l = self.down_sample2(l)
+        # l = self.down_sample1(l)
+        # l = self.down_sample2(l)
+        l = self.fea(l)
         l = self.block1(l)
         l = self.block2(l)
         l = self.block3(l)
@@ -229,8 +238,9 @@ class GCNet(nn.Module):
         l = self.block8(l)
         l = self.conv(l)
 
-        r = self.down_sample1(r)
-        r = self.down_sample2(r)
+        # r = self.down_sample1(r)
+        # r = self.down_sample2(r)
+        r = self.fea(r)
         r = self.block1(r)
         r = self.block2(r)
         r = self.block3(r)
@@ -241,7 +251,7 @@ class GCNet(nn.Module):
         r = self.block8(r)
         r = self.conv(r)
 
-        v = cost_volume_generation(l, r, 46)
+        v = cost_volume_generation(l, r, 48)
 
         out21 = self.enc1(v)
         out24 = self.enc2(out21)
@@ -270,8 +280,10 @@ class GCNet(nn.Module):
         x4 = self.conv20(x4)
         out = residual + x4
 
-        out = self.up_sample2(out.cuda(1))
-        out = self.up_sample1(out.cuda(2))
+        # out = out.cuda(1)
+        # out = self.up_sample2(out)
+        # out = out.cuda(2)
+        # out = self.up_sample1(out)
 
         out = (nn.Softmax(dim=4))(torch.mul(out, -1))
         length = out.data.size()[4]
@@ -294,21 +306,27 @@ def print_param_count(model):
 
 def train(model, epoch):
     model.train()
-    print_param_count(model)
+    # print_param_count(model)
 
-    train_loader = torch.utils.data.DataLoader(MyDataset(ROOT_PATH, TRUTH_PATH, transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])), batch_size=1)
+    train_loader = torch.utils.data.DataLoader(
+        MyDataset(
+            ROOT_PATH,
+            TRUTH_PATH,
+            transform=transforms.Compose([
+                transforms.Resize((135, 240), interpolation=Image.ANTIALIAS),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])),
+        batch_size=1)
 
     criterion = nn.L1Loss()
 
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
 
-    for epoch in range(1, epochs+1):
+    for epoch in range(1, epochs + 1):
         for batch_idx, (l, r, truth) in enumerate(train_loader):
             if cuda_available:
-                l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(2)
+                l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(0)
             l, r, truth = Variable(l), Variable(r), Variable(truth)
 
             outputs = model(l, r)
@@ -318,9 +336,12 @@ def train(model, epoch):
             optimizer.step()
             # if (batch_idx + 1) % 10 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, (batch_idx+1) * len(truth), len(train_loader.dataset),
-                100. * (batch_idx+1) / len(train_loader), loss.data[0]))
-            # del loss, l, r, truth
+                epoch, (batch_idx + 1) * len(truth),
+                len(train_loader.dataset),
+                100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
+            # del l, r, truth, outputs
+            # gc.collect()
+            # torch.cuda.empty_cache()
 
 
 def test_gcnet():
@@ -333,4 +354,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if torch.cuda.is_available():
+        cuda_available = True
     main()
