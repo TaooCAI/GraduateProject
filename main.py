@@ -15,7 +15,7 @@ import scipy.io as sio
 
 MAX_D = 192
 ROOT_PATH = "/home/caitao/Downloads/tmp_data/data/a_rain_of_stones_x2"
-TRUTH_PATH = "/home/caitao/Downloads/tmp_data/groundtruth/a_rain_of_stones_x2/mat_resize_0.25"
+TRUTH_PATH = "/home/caitao/Downloads/tmp_data/groundtruth/a_rain_of_stones_x2/mat_resize"
 cuda_available = False
 epochs = 10
 
@@ -195,8 +195,8 @@ class GCNet(nn.Module):
 
             self.conv = nn.Conv2d(32, 32, 3, padding=1).cuda()
 
-            self.conv19 = conv3x3x3_padding(64, 32).cuda()
-            self.conv20 = conv3x3x3_padding(32, 1).cuda()
+            self.conv19 = conv3x3x3_padding(64, 32).cuda(2)
+            self.conv20 = conv3x3x3_padding(32, 1).cuda(2)
             self.enc1 = conv3x3x3(64, 64).cuda()
             self.conv22 = conv3x3x3_padding(64, 64).cuda()
             self.conv23 = conv3x3x3_padding(64, 64).cuda()
@@ -213,11 +213,11 @@ class GCNet(nn.Module):
             self.dec4 = nn.ConvTranspose3d(
                 128, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda()
             self.dec3 = nn.ConvTranspose3d(
-                64, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda()
+                64, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda()
         self.dec2 = nn.ConvTranspose3d(
-            64, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda(1)
+            64, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda(1)
         self.dec1 = nn.ConvTranspose3d(
-            64, 1, 3, stride=2, output_padding=(0, 1, 1)).cuda(2)
+            64, 1, 3, stride=2, output_padding=(1, 1, 1)).cuda(2)
         # self.output = nn.ConvTranspose3d(
         #     32, 1, 1, stride=1, output_padding=(0, 0, 0)).cuda()
 
@@ -253,7 +253,7 @@ class GCNet(nn.Module):
         r = self.block8(r)
         r = self.conv(r)
 
-        v = cost_volume_generation(l, r, 48)
+        v = cost_volume_generation(l, r, 96)
 
         out21 = self.enc1(v)
         out24 = self.enc2(out21)
@@ -278,9 +278,9 @@ class GCNet(nn.Module):
         residual += x3.cuda(1)
 
         residual = self.dec1(residual.cuda(2))
-        x4 = self.conv19(v)
+        x4 = self.conv19(v.cuda(2))
         x4 = self.conv20(x4)
-        out = residual + x4.cuda(2)
+        out = residual + x4
 
         # out = self.output(out)
 
@@ -317,7 +317,7 @@ def train(model, epoch):
             ROOT_PATH,
             TRUTH_PATH,
             transform=transforms.Compose([
-                transforms.Resize((135, 240), interpolation=Image.ANTIALIAS),
+                transforms.Resize((270, 480), interpolation=Image.ANTIALIAS),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ])),
