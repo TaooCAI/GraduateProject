@@ -15,7 +15,7 @@ import scipy.io as sio
 
 MAX_D = 192
 ROOT_PATH = "/home/caitao/Downloads/tmp_data/data/a_rain_of_stones_x2"
-TRUTH_PATH = "/home/caitao/Downloads/tmp_data/groundtruth/a_rain_of_stones_x2/mat_resize"
+TRUTH_PATH = "/home/caitao/Downloads/tmp_data/groundtruth/a_rain_of_stones_x2/left"
 cuda_available = False
 epochs = 10
 
@@ -100,13 +100,14 @@ class MyDataset(Dataset):
         r, imglist_r = get_one("right")
         assert imglist == imglist_r
 
-        truth_namelist = [x[:x.rindex('.') + 1] + "pfm.mat" for x in imglist]
+        truth_namelist = [x[:x.rindex('.') + 1] + "pfm" for x in imglist]
         ans = []
         for _, truth_name in enumerate(truth_namelist):
             abso_path = os.path.join(self.truth_path, truth_name)
-            # onetruth, _ = readPFM(abso_path)
-            onetruth = sio.loadmat(abso_path)['tmp']
-            onetruth = torch.FloatTensor(onetruth)
+            onetruth, _ = readPFM(abso_path)
+            onetruth = torch.FloatTensor(onetruth.tolist())
+            # onetruth = sio.loadmat(abso_path)['tmp']
+            # onetruth = torch.FloatTensor(onetruth)
             ans.append(onetruth)
 
         truth = torch.stack(ans, dim=0)
@@ -176,14 +177,14 @@ class ResidualBlock(nn.Module):
         return out
 
 
-class GCNet(nn.Module):
+class MyNet(nn.Module):
     def __init__(self):
         super().__init__()
 
-        with torch.cuda.device(0):
-            # self.down_sample1 = conv5x5(3, 32).cuda()
-            # self.down_sample2 = conv5x5(32, 32).cuda()
+        with torch.cuda.device(2):
             self.fea = conv5x5(3, 32).cuda()
+            self.down_sample1 = down_sample(32, 32).cuda()
+            self.down_sample2 = down_sample(32, 32).cuda()
             self.block1 = ResidualBlock(32, 32).cuda()
             self.block2 = ResidualBlock(32, 32).cuda()
             self.block3 = ResidualBlock(32, 32).cuda()
@@ -195,8 +196,8 @@ class GCNet(nn.Module):
 
             self.conv = nn.Conv2d(32, 32, 3, padding=1).cuda()
 
-            self.conv19 = conv3x3x3_padding(64, 32).cuda(2)
-            self.conv20 = conv3x3x3_padding(32, 1).cuda(2)
+            self.conv19 = conv3x3x3_padding(64, 32).cuda()
+            self.conv20 = conv3x3x3_padding(32, 1).cuda()
             self.enc1 = conv3x3x3(64, 64).cuda()
             self.conv22 = conv3x3x3_padding(64, 64).cuda()
             self.conv23 = conv3x3x3_padding(64, 64).cuda()
@@ -211,13 +212,13 @@ class GCNet(nn.Module):
             self.conv32 = conv3x3x3_padding(128, 128).cuda()
 
             self.dec4 = nn.ConvTranspose3d(
-                128, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda()
+                128, 64, 3, stride=2, output_padding=(0, 0, 0)).cuda()
             self.dec3 = nn.ConvTranspose3d(
                 64, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda()
-        self.dec2 = nn.ConvTranspose3d(
-            64, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda(1)
-        self.dec1 = nn.ConvTranspose3d(
-            64, 1, 3, stride=2, output_padding=(1, 1, 1)).cuda(2)
+            self.dec2 = nn.ConvTranspose3d(
+                64, 64, 3, stride=2, output_padding=(1, 0, 0)).cuda()
+            self.dec1 = nn.ConvTranspose3d(
+                64, 32, 3, stride=2, output_padding=(1, 0, 0)).cuda()
         # self.output = nn.ConvTranspose3d(
         #     32, 1, 1, stride=1, output_padding=(0, 0, 0)).cuda()
 
@@ -225,35 +226,40 @@ class GCNet(nn.Module):
         #     32, 32, 3, stride=2, output_padding=(0, 0, 1)).cuda(1)
         # self.up_sample1 = nn.ConvTranspose3d(
         #     32, 1, 3, stride=2, output_padding=(1, 1, 0)).cuda(2)
+            self.full_resolution2 = nn.ConvTranspose2d(
+                32, 32, 3, stride=2, output_padding=(0, 0)).cuda()
+            self.full_resolution1 = nn.ConvTranspose2d(
+                32, 32, 3, stride=2, output_padding=(1, 1)).cuda()
+            self.output = nn.Conv2d(32, 1, 3, padding=1).cuda()
 
     def forward(self, l, r):
-        # l = self.down_sample1(l)
-        # l = self.down_sample2(l)
-        l = self.fea(l)
-        l = self.block1(l)
-        l = self.block2(l)
-        l = self.block3(l)
-        l = self.block4(l)
-        l = self.block6(l)
-        l = self.block6(l)
-        l = self.block7(l)
-        l = self.block8(l)
-        l = self.conv(l)
+        feature_l = self.fea(l)
+        half_l = self.down_sample1(feature_l)
+        quarter_l = self.down_sample2(half_l)
+        ql = self.block1(quarter_l)
+        ql = self.block2(ql)
+        ql = self.block3(ql)
+        ql = self.block4(ql)
+        ql = self.block6(ql)
+        ql = self.block6(ql)
+        ql = self.block7(ql)
+        ql = self.block8(ql)
+        ql = self.conv(ql)
 
-        # r = self.down_sample1(r)
-        # r = self.down_sample2(r)
-        r = self.fea(r)
-        r = self.block1(r)
-        r = self.block2(r)
-        r = self.block3(r)
-        r = self.block4(r)
-        r = self.block5(r)
-        r = self.block6(r)
-        r = self.block7(r)
-        r = self.block8(r)
-        r = self.conv(r)
+        feature_r = self.fea(r)
+        half_r = self.down_sample1(feature_r)
+        quarter_r = self.down_sample2(half_r)
+        qr = self.block1(quarter_r)
+        qr = self.block2(qr)
+        qr = self.block3(qr)
+        qr = self.block4(qr)
+        qr = self.block5(qr)
+        qr = self.block6(qr)
+        qr = self.block7(qr)
+        qr = self.block8(qr)
+        qr = self.conv(qr)
 
-        v = cost_volume_generation(l, r, 96)
+        v = cost_volume_generation(ql, qr, 47)
 
         out21 = self.enc1(v)
         out24 = self.enc2(out21)
@@ -272,13 +278,13 @@ class GCNet(nn.Module):
         x2 = self.conv26(x2)
         residual += x2
 
-        residual = self.dec2(residual.cuda(1))
+        residual = self.dec2(residual)
         x3 = self.conv22(out21)
         x3 = self.conv23(x3)
-        residual += x3.cuda(1)
+        residual += x3
 
-        residual = self.dec1(residual.cuda(2))
-        x4 = self.conv19(v.cuda(2))
+        residual = self.dec1(residual)
+        x4 = self.conv19(v)
         x4 = self.conv20(x4)
         out = residual + x4
 
@@ -291,10 +297,17 @@ class GCNet(nn.Module):
 
         out = (nn.Softmax(dim=4))(torch.mul(out, -1))
         length = out.data.size()[4]
-        res = torch.mul(out[:, :, :, :, 1], 1)
-        for i in range(2, length):
-            res += torch.mul(out[:, :, :, :, i], i)
-        out = torch.squeeze(res, dim=1)
+        res = torch.mul(out[:, :, :, :, 0], 1)
+        for i in range(1, length):
+            res += torch.mul(out[:, :, :, :, i], i+1)
+        # out = torch.squeeze(res, dim=1)
+
+        # GC-Net part ends
+        # FS part starts
+
+        out = self.full_resolution2(quarter_l + quarter_r + res)
+        out = self.full_resolution1(half_l + half_r + out)
+        out = self.output(feature_l + feature_r + out)
         return out
 
 
@@ -317,7 +330,7 @@ def train(model, epoch):
             ROOT_PATH,
             TRUTH_PATH,
             transform=transforms.Compose([
-                transforms.Resize((270, 480), interpolation=Image.ANTIALIAS),
+                # transforms.Resize((270, 480), interpolation=Image.ANTIALIAS),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ])),
@@ -330,7 +343,7 @@ def train(model, epoch):
     for epoch in range(1, epochs + 1):
         for batch_idx, (l, r, truth) in enumerate(train_loader):
             if cuda_available:
-                l, r, truth = l.cuda(0), r.cuda(0), truth.cuda(2)
+                l, r, truth = l.cuda(2), r.cuda(2), truth.cuda(2)
             l, r, truth = Variable(l), Variable(r), Variable(truth)
 
             outputs = model(l, r)
@@ -353,7 +366,7 @@ def test_gcnet():
 
 
 def main():
-    model = GCNet()
+    model = MyNet()
     train(model, epochs)
 
 
