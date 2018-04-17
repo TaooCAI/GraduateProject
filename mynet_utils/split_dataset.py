@@ -20,9 +20,9 @@ def split_dataset(images_root, truth_root, save_path, scale=4):
         l = os.path.join(images_root, kind, 'left')
         r = os.path.join(images_root, kind, 'right')
         t = os.path.join(truth_root, kind, 'left')
-        left += [os.path.join(l, item) for item in os.listdir(l) if item.endswith('.png')]
-        right += [os.path.join(r, item) for item in os.listdir(r) if item.endswith('.png')]
-        truth += [os.path.join(t, item) for item in os.listdir(t) if item.endswith('.pfm')]
+        left += [os.path.join(l, item) for item in sorted(os.listdir(l)) if item.endswith('.png')]
+        right += [os.path.join(r, item) for item in sorted(os.listdir(r)) if item.endswith('.png')]
+        truth += [os.path.join(t, item) for item in sorted(os.listdir(t)) if item.endswith('.pfm')]
     length = len(left)
     tmp_list = list(range(length))
     random.shuffle(tmp_list)
