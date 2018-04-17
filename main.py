@@ -6,11 +6,13 @@ from torch.autograd import Variable
 import torch.optim as optim
 from torch.utils.data import Dataset
 from MonkaaDataset import MonkaaDataset
+import visdom
+import os
 
-IMAGE_PATH = "/home/caitao/Downloads/tmp_data/data/"
-TRUTH_PATH = "/home/caitao/Downloads/tmp_data/groundtruth/"
+index_file_path = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
+model_path = '/home/caitao/Documents/Monkaa/model/'
 cuda_available = False
-epochs = 10
+epochs = 15
 
 
 def down_sample(in_channels, out_channels):
@@ -182,28 +184,45 @@ def print_param_count(model):
     print("parameter's count is {}\n".format(count))
 
 
-def train(model, epoch):
-    model.train()
-    # print_param_count(model)
+def train():
+    vis = visdom.Visdom()
+    loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
+                           opts=dict(xlabel='batches', ylabel='loss', title='Trainingloss', legend=['loss']))
+    model = GCNet()
+    if cuda_available:
+        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+        model = model.cuda()
 
     train_loader = torch.utils.data.DataLoader(
         MonkaaDataset(
-            IMAGE_PATH,
-            TRUTH_PATH,
+            index_file_path,
+            stage='train',
             transform=transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ])),
-        batch_size=2)
+        batch_size=8, drop_last=True, num_workers=8)
+    test_loader = torch.utils.data.DataLoader(
+        MonkaaDataset(
+            index_file_path,
+            stage='test',
+            transform=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])),
+        batch_size=8, drop_last=True, num_workers=8)
 
     criterion = nn.L1Loss()
 
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
 
+    best = 100000.0
+
     for epoch in range(1, epochs + 1):
+        model.train()
         for batch_idx, (l, r, truth) in enumerate(train_loader):
             if cuda_available:
-                l, r, truth = l.cuda(1), r.cuda(1), truth.cuda(1)
+                l, r, truth = l.cuda(), r.cuda(), truth.cuda()
             l, r, truth = Variable(l), Variable(r), Variable(truth)
 
             outputs = model(l, r)
@@ -211,26 +230,41 @@ def train(model, epoch):
             loss = criterion(outputs, truth)
             loss.backward()
             optimizer.step()
-            # if (batch_idx + 1) % 10 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, (batch_idx + 1) * len(truth),
-                len(train_loader.dataset),
-                       100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
+            vis.line(
+                X=torch.ones((1, 1)).cpu() * epoch,
+                Y=torch.Tensor([loss.data[0]]).unsqueeze(0).cpu(),
+                win=loss_window,
+                update='append')
+            if (batch_idx + 1) % 10 == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, (batch_idx + 1) * len(truth),
+                    len(train_loader.dataset),
+                           100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
+                state = {
+                    'epoch': epoch,
+                    'batch':batch_idx,
+                    'model_state': model.state_dict(),
+                    'optimizer_state': optimizer.state_dict()
+                }
+                torch.save(state, os.path.join(model_path, f'model_cache_{epoch}_{batch_idx}.pth'))
+        model.eval()
+        for batch_idx, (l, r, truth) in enumerate(test_loader):
+            if cuda_available:
+                l, r, truth = l.cuda(), r.cuda(), truth.cuda()
+            l, r, truth = Variable(l, volatile=True), Variable(r, volatile=True), Variable(truth, volatile=True)
 
-
-def test_gcnet():
-    pass
-
-
-def main():
-    model = GCNet()
-    if cuda_available:
-        model = torch.nn.DataParallel(model, device_ids=[1])
-        model = model.cuda(1)
-    train(model, epochs)
+            outputs = model(l, r)
+            loss = criterion(outputs, truth)
+            if loss.data[0] < best:
+                state = {
+                    'epoch': epoch,
+                    'model_state': model.state_dict(),
+                    'optimizer_state': optimizer.state_dict()
+                }
+                torch.save(state, os.path.join(model_path, 'best_model.pth'))
 
 
 if __name__ == "__main__":
     if torch.cuda.is_available():
         cuda_available = True
-    main()
+    train()

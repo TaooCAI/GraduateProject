@@ -53,3 +53,6 @@ if __name__ == "__main__":
         if f.endswith('pfm'):
             data, _ = readPFM(os.path.join(truth_path, f))
             sio.savemat(os.path.join(mat_path, f), {'mat': data})
+
+import skimage.transform as transform
+transform.resize()
