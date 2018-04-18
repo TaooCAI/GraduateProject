@@ -103,18 +103,25 @@ class GCNet(nn.Module):
         self.conv31 = conv3x3x3(128, 128)
         self.conv32 = conv3x3x3(128, 128)
 
-        self.dec4 = nn.ConvTranspose3d(
-            128, 64, 3, stride=2, output_padding=(1, 0, 0))
-        self.dec3 = nn.ConvTranspose3d(
-            64, 64, 3, stride=2, output_padding=(0, 0, 0))
-        self.dec2 = nn.ConvTranspose3d(
-            64, 64, 3, stride=2, output_padding=(0, 0, 0))
-        self.dec1 = nn.ConvTranspose3d(
-            64, 1, 3, stride=2, output_padding=(0, 1, 1))
+        self.dec4 = nn.Sequential(nn.ConvTranspose3d(
+            128, 64, 3, stride=2, output_padding=(1, 0, 0)),
+            nn.BatchNorm3d(64), nn.ReLU())
+        self.dec3 = nn.Sequential(nn.ConvTranspose3d(
+            64, 64, 3, stride=2, output_padding=(0, 0, 0)),
+            nn.BatchNorm3d(64), nn.ReLU())
+        self.dec2 = nn.Sequential(nn.ConvTranspose3d(
+            64, 64, 3, stride=2, output_padding=(0, 0, 0)),
+            nn.BatchNorm3d(64), nn.ReLU())
+        self.dec1 = nn.Sequential(nn.ConvTranspose3d(
+            64, 32, 3, stride=2, output_padding=(0, 1, 1)),
+            nn.BatchNorm3d(32), nn.ReLU())
+        self.output = nn.Conv3d(
+            32, 1, kernel_size=3, stride=1, padding=1)
 
     def forward(self, l, r):
         l = self.down_sample1(l)
         l = self.down_sample2(l)
+
         l = self.block1(l)
         l = self.block2(l)
         l = self.block3(l)
@@ -123,10 +130,12 @@ class GCNet(nn.Module):
         l = self.block6(l)
         l = self.block7(l)
         l = self.block8(l)
+
         l = self.conv(l)
 
         r = self.down_sample1(r)
         r = self.down_sample2(r)
+
         r = self.block1(r)
         r = self.block2(r)
         r = self.block3(r)
@@ -135,36 +144,47 @@ class GCNet(nn.Module):
         r = self.block6(r)
         r = self.block7(r)
         r = self.block8(r)
+
         r = self.conv(r)
 
         v = cost_volume_generation(l, r, 48)
 
-        out21 = self.enc1(v)
-        out24 = self.enc2(out21)
-        out27 = self.enc3(out24)
+        out = self.conv19(v)
+        out20 = self.conv20(out)
+        out = v + out20
 
-        residual = self.enc4(out27)
-        residual = self.conv31(residual)
-        residual = self.conv32(residual)
-        residual = self.dec4(residual)
-        x1 = self.conv28(out27)
-        x1 = self.conv29(x1)
-        residual += x1
+        out21 = self.enc1(out)
+        out = self.conv22(out21)
+        out23 = self.conv23(out)
+        out = out21 + out23
 
-        residual = self.dec3(residual)
-        x2 = self.conv25(out24)
-        x2 = self.conv26(x2)
-        residual += x2
+        out24 = self.enc2(out)
+        out = self.conv25(out24)
+        out26 = self.conv26(out)
+        out = out24 + out26
 
-        residual = self.dec2(residual)
-        x3 = self.conv22(out21)
-        x3 = self.conv23(x3)
-        residual += x3
+        out27 = self.enc3(out)
+        out = self.conv28(out27)
+        out29 = self.conv29(out)
+        out = out27 + out29
 
-        residual = self.dec1(residual)
-        x4 = self.conv19(v)
-        x4 = self.conv20(x4)
-        out = residual + x4
+        out = self.enc4(out)
+        out = self.conv31(out)
+        out = self.out32(out)
+        out = self.dec4(out)
+
+        out = out + out29
+        out = self.dec3(out)
+
+        out = out + out26
+        out = self.dec2(out)
+
+        out = out + out23
+        out = self.dec1(out)
+
+        out = out + out20
+
+        out = self.output(out)
 
         out = (nn.Softmax(dim=4))(torch.mul(out, -1))
         length = out.data.size()[4]
@@ -173,16 +193,6 @@ class GCNet(nn.Module):
             res += torch.mul(out[:, :, :, :, i], i + 1)
         out = torch.squeeze(res, dim=1)
         return out
-
-
-def print_param_count(model):
-    count = 0
-    for param in model.parameters():
-        ans = 1
-        for num in param.size():
-            ans = ans * num
-        count += ans
-    print("parameter's count is {}\n".format(count))
 
 
 def train():
