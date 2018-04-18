@@ -202,6 +202,10 @@ def train():
         vis = visdom.Visdom()
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
                                opts=dict(xlabel='batches', ylabel='loss', title='Trainingloss', legend=['loss']))
+        A = torch.randn([4, 5])
+        A = (A - torch.min(A)) / torch.max(A)
+        image_groundtruth = vis.image(A.cpu(), opts=dict(title='groundtruth'))
+        image_output = vis.image(A.cpu(), opts=dict(title='output'))
     model = GCNet()
     model.train()
     if cuda_available:
@@ -248,17 +252,20 @@ def train():
             loss.backward()
             optimizer.step()
             if whether_vis is True:
+                global vis, loss_window, image_groundtruth, image_output
                 vis.line(
                     X=torch.ones((1,)).cpu() * x_pos,
                     Y=torch.Tensor([loss.data[0]]).cpu(),
                     win=loss_window,
                     update='append')
+                vis.image(((truth[0] - torch.min(truth[0])) / torch.max(truth[0])).cpu(), win=image_groundtruth)
+                vis.image(((outputs[0] - torch.min(outputs[0])) / torch.max(outputs[0])).cpu(), win=image_output)
             x_pos += 1
             if (batch_idx + 1) % 2 == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, (batch_idx + 1) * len(truth),
                     len(train_loader.dataset),
-                    100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
+                           100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
             if loss.data[0] < best:
                 state = {
                     'epoch': epoch,

@@ -4,7 +4,7 @@
 @author: CaiTao
 @license: Apache Licence
 @contact: 1120141815@bit.edu.cn
-@file: split_dataset.py
+@file: print_param.py
 @time: 4/17/18 10:23 AM
 """
 
