@@ -9,7 +9,7 @@
 """
 
 import scipy.misc as scim
-# import skimage.transform as transform
+import skimage.transform as transform
 from torch.utils.data import Dataset
 import torch
 from mynet_utils import python_pfm
@@ -32,7 +32,7 @@ class MonkaaDataset(Dataset):
         img_right = self.transform(img_right)
 
         truth, _ = python_pfm.readPFM(self.index_file[index][2])
-        # truth = transform.downscale_local_mean(truth, (4, 4))
-        truth = torch.FloatTensor(truth.tolist())
+        truth = transform.downscale_local_mean(truth, (4, 4))
+        truth = torch.FloatTensor(truth)
 
         return img_left, img_right, truth

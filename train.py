@@ -19,7 +19,7 @@ epochs = 15
 def down_sample(in_channels, out_channels):
     return nn.Sequential(
         nn.Conv2d(
-            in_channels, out_channels, kernel_size=5, stride=2, padding=1),
+            in_channels, out_channels, kernel_size=5, stride=2, padding=2),
         nn.BatchNorm2d(out_channels), nn.ReLU())
 
 
@@ -89,7 +89,7 @@ class GCNet(nn.Module):
         self.conv = nn.Conv2d(32, 32, 3, padding=1)
 
         self.conv19 = conv3x3x3(64, 32)
-        self.conv20 = conv3x3x3(32, 32)
+        self.conv20 = conv3x3x3(32, 1)
         self.enc1 = conv3x3x3_half(64, 64)
         self.conv22 = conv3x3x3(64, 64)
         self.conv23 = conv3x3x3(64, 64)
@@ -104,20 +104,13 @@ class GCNet(nn.Module):
         self.conv32 = conv3x3x3(128, 128)
 
         self.dec4 = nn.ConvTranspose3d(
-            128, 64, 3, stride=2, output_padding=(0, 0, 0))
+            128, 64, 3, stride=2, output_padding=(1, 0, 0))
         self.dec3 = nn.ConvTranspose3d(
-            64, 64, 3, stride=2, output_padding=(1, 0, 0))
+            64, 64, 3, stride=2, output_padding=(0, 0, 0))
         self.dec2 = nn.ConvTranspose3d(
-            64, 64, 3, stride=2, output_padding=(1, 0, 0))
+            64, 64, 3, stride=2, output_padding=(0, 0, 0))
         self.dec1 = nn.ConvTranspose3d(
-            64, 32, 3, stride=2, output_padding=(1, 0, 0))
-
-        self.up_sample2 = nn.ConvTranspose2d(
-            32, 32, 3, stride=2, output_padding=(0, 0)
-        )
-        self.up_sample1 = nn.ConvTranspose2d(
-            32, 1, 3, stride=2, output_padding=(1, 1)
-        )
+            64, 1, 3, stride=2, output_padding=(0, 1, 1))
 
     def forward(self, l, r):
         l = self.down_sample1(l)
@@ -144,7 +137,7 @@ class GCNet(nn.Module):
         r = self.block8(r)
         r = self.conv(r)
 
-        v = cost_volume_generation(l, r, 47)
+        v = cost_volume_generation(l, r, 48)
 
         out21 = self.enc1(v)
         out24 = self.enc2(out21)
@@ -178,10 +171,7 @@ class GCNet(nn.Module):
         res = torch.mul(out[:, :, :, :, 0], 1)
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
-        # out = torch.squeeze(res, dim=1)
-
-        out = self.up_sample2(res)
-        out = self.up_sample1(out)
+        out = torch.squeeze(res, dim=1)
         return out
 
 
@@ -197,9 +187,11 @@ def print_param_count(model):
 
 def train():
     batch_size = 8
-    vis = visdom.Visdom()
-    loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                           opts=dict(xlabel='batches', ylabel='loss', title='Trainingloss', legend=['loss']))
+    whether_vis = True
+    if whether_vis is True:
+        vis = visdom.Visdom()
+        loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
+                               opts=dict(xlabel='batches', ylabel='loss', title='Trainingloss', legend=['loss']))
     model = GCNet()
     model.train()
     if cuda_available:
@@ -224,10 +216,18 @@ def train():
 
     x_pos = 0
 
-    for epoch in range(1, epochs + 1):
+    whether_load_model = False
+    state_file = 'do not load. when whether_load_model is True, please specify this variable'
+
+    epoch_start = 1
+    if whether_load_model is True:
+        state = torch.load(state_file)
+        model.load_state_dict(state['model_state'])
+        optimizer.load_state_dict(state['optimizer_state'])
+        epoch_start = state['epoch']
+
+    for epoch in range(epoch_start, epochs + 1):
         for batch_idx, (l, r, truth) in enumerate(train_loader):
-            if batch_idx > 10:
-                break
             if cuda_available:
                 l, r, truth = l.cuda(), r.cuda(), truth.cuda()
             l, r, truth = Variable(l), Variable(r), Variable(truth)
@@ -237,25 +237,37 @@ def train():
             loss = criterion(outputs, truth)
             loss.backward()
             optimizer.step()
-            vis.line(
-                X=torch.ones((1,)).cpu() * x_pos,
-                Y=torch.Tensor([loss.data[0]]).cpu(),
-                win=loss_window,
-                update='append')
+            if whether_vis is True:
+                vis.line(
+                    X=torch.ones((1,)).cpu() * x_pos,
+                    Y=torch.Tensor([loss.data[0]]).cpu(),
+                    win=loss_window,
+                    update='append')
             x_pos += 1
             if (batch_idx + 1) % 2 == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, (batch_idx + 1) * len(truth),
                     len(train_loader.dataset),
                     100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
-                # state = {
-                #     'epoch': epoch,
-                #     'batch': batch_idx,
-                #     'model_state': model.state_dict(),
-                #     'optimizer_state': optimizer.state_dict()
-                # }
-                # torch.save(state, os.path.join(
-                #     model_path, f'model_cache_{epoch}_{batch_idx*batch_size}.pth'))
+            if loss.data[0] < best:
+                state = {
+                    'epoch': epoch,
+                    'batch': batch_idx,
+                    'model_state': model.state_dict(),
+                    'optimizer_state': optimizer.state_dict()
+                }
+                torch.save(state, os.path.join(
+                    model_path, f'best_model_cache_{epoch}_{(batch_idx+1)*batch_size}.pth'))
+                continue
+            if (batch_idx + 1) % 10 == 0:
+                state = {
+                    'epoch': epoch,
+                    'batch': batch_idx,
+                    'model_state': model.state_dict(),
+                    'optimizer_state': optimizer.state_dict()
+                }
+                torch.save(state, os.path.join(
+                    model_path, f'model_cache_{epoch}_{(batch_idx+1)*batch_size}.pth'))
 
 
 if __name__ == "__main__":
