@@ -201,6 +201,7 @@ def train():
     loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
                            opts=dict(xlabel='batches', ylabel='loss', title='Trainingloss', legend=['loss']))
     model = GCNet()
+    model.train()
     if cuda_available:
         model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
         model = model.cuda()
@@ -217,15 +218,16 @@ def train():
 
     criterion = nn.L1Loss()
 
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
+    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.5)
 
     best = 100000.0
 
-    x_pos = 1
+    x_pos = 0
 
     for epoch in range(1, epochs + 1):
-        model.train()
         for batch_idx, (l, r, truth) in enumerate(train_loader):
+            if batch_idx > 10:
+                break
             if cuda_available:
                 l, r, truth = l.cuda(), r.cuda(), truth.cuda()
             l, r, truth = Variable(l), Variable(r), Variable(truth)
@@ -245,7 +247,7 @@ def train():
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, (batch_idx + 1) * len(truth),
                     len(train_loader.dataset),
-                           100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
+                    100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
                 # state = {
                 #     'epoch': epoch,
                 #     'batch': batch_idx,
