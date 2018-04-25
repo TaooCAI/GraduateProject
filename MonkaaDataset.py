@@ -9,10 +9,12 @@
 """
 
 import scipy.misc as scim
-import skimage.transform as transform
 from torch.utils.data import Dataset
 import torch
 from mynet_utils import python_pfm
+from PIL import Image
+from torchvision import transforms
+import numpy as np
 
 
 class MonkaaDataset(Dataset):
@@ -32,7 +34,7 @@ class MonkaaDataset(Dataset):
         img_right = self.transform(img_right)
 
         truth, _ = python_pfm.readPFM(self.index_file[index][2])
-        truth = transform.downscale_local_mean(truth, (4, 4))
-        truth = torch.FloatTensor(truth)
+        img = Image.fromarray(truth)
+        truth = torch.FloatTensor(np.array(transforms.Resize([truth.shape[0] // 4, truth.shape[1] // 4])(img))) / 4
 
         return img_left, img_right, truth

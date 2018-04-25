@@ -170,7 +170,7 @@ class GCNet(nn.Module):
 
         out = self.enc4(out)
         out = self.conv31(out)
-        out = self.out32(out)
+        out = self.conv32(out)
         out = self.dec4(out)
 
         out = out + out29
@@ -196,10 +196,10 @@ class GCNet(nn.Module):
 
 
 def train():
-    batch_size = 8
+    batch_size = 4
     whether_vis = True
     if whether_vis is True:
-        vis = visdom.Visdom()
+        vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
                                opts=dict(xlabel='batches', ylabel='loss', title='Trainingloss', legend=['loss']))
         A = torch.randn([4, 5])
@@ -224,11 +224,13 @@ def train():
 
     criterion = nn.L1Loss()
 
-    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.5)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     best = 100000.0
 
     x_pos = 0
+    max_thresh = 50.0
+    min_thresh = 8.0
 
     whether_load_model = False
     state_file = 'do not load. when whether_load_model is True, please specify this variable'
@@ -251,40 +253,63 @@ def train():
             loss = criterion(outputs, truth)
             loss.backward()
             optimizer.step()
-            if whether_vis is True:
-                global vis, loss_window, image_groundtruth, image_output
+
+            if loss.data[0] < max_thresh and whether_vis:
                 vis.line(
                     X=torch.ones((1,)).cpu() * x_pos,
                     Y=torch.Tensor([loss.data[0]]).cpu(),
                     win=loss_window,
                     update='append')
-                vis.image(((truth[0] - torch.min(truth[0])) / torch.max(truth[0])).cpu(), win=image_groundtruth)
-                vis.image(((outputs[0] - torch.min(outputs[0])) / torch.max(outputs[0])).cpu(), win=image_output)
+                vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
+                          win=image_groundtruth, opts=dict(title='groundtruth'))
+                vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
+                          win=image_output, opts=dict(title='output'))
+            elif whether_vis:
+                exception = {
+                    'l': l,
+                    'r': r,
+                    'truth': truth
+                }
+                torch.save(exception, os.path.join(model_path, f'exception_{epoch}_{batch_idx}_{x_pos}.pth'))
+
             x_pos += 1
             if (batch_idx + 1) % 2 == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, (batch_idx + 1) * len(truth),
                     len(train_loader.dataset),
                            100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
-            if loss.data[0] < best:
-                state = {
-                    'epoch': epoch,
-                    'batch': batch_idx,
-                    'model_state': model.state_dict(),
-                    'optimizer_state': optimizer.state_dict()
-                }
-                torch.save(state, os.path.join(
-                    model_path, f'best_model_cache_{epoch}_{(batch_idx+1)*batch_size}.pth'))
-                continue
-            if (batch_idx + 1) % 10 == 0:
-                state = {
-                    'epoch': epoch,
-                    'batch': batch_idx,
-                    'model_state': model.state_dict(),
-                    'optimizer_state': optimizer.state_dict()
-                }
-                torch.save(state, os.path.join(
-                    model_path, f'model_cache_{epoch}_{(batch_idx+1)*batch_size}.pth'))
+            # if loss.data[0] < 0.5 and loss.data[0] < best:
+            #     best = loss.data[0]
+            #     state = {
+            #         'epoch': epoch,
+            #         'batch': batch_idx,
+            #         'model_state': model.state_dict(),
+            #         'optimizer_state': optimizer.state_dict()
+            #     }
+            #     torch.save(state, os.path.join(
+            #         model_path, f'best_model_cache_{epoch}_{(batch_idx+1)*batch_size}.pth'))
+            #     continue
+            # if (batch_idx + 1) % 10 == 0:
+            #     state = {
+            #         'epoch': epoch,
+            #         'batch': batch_idx,
+            #         'model_state': model.state_dict(),
+            #         'optimizer_state': optimizer.state_dict()
+            #     }
+            #     torch.save(state, os.path.join(
+            #         model_path, f'model_cache_{epoch}_{(batch_idx+1)*batch_size}.pth'))
+        if max_thresh / 2 > min_thresh:
+            max_thresh = max_thresh / 2
+
+        if (epoch - 1) % 5 == 0 or epoch == 15:
+            state = {
+                'epoch': epoch,
+                'model_state': model.state_dict(),
+                'optimizer_state': optimizer.state_dict()
+            }
+            torch.save(state, os.path.join(
+                model_path, f'model_cache_{epoch}.pth'))
+
 
 
 if __name__ == "__main__":
