@@ -37,4 +37,4 @@ class MonkaaDataset(Dataset):
         img = Image.fromarray(truth)
         truth = torch.FloatTensor(np.array(transforms.Resize([truth.shape[0] // 4, truth.shape[1] // 4])(img))) / 4
 
-        return img_left, img_right, truth
+        return self.index_file[index], img_left, img_right, truth

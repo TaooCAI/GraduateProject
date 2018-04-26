@@ -8,10 +8,10 @@ from torch.utils.data import Dataset
 from MonkaaDataset import MonkaaDataset
 import visdom
 import os
+import time
 
 index_file_path = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-# index_file_path = '/home/caitao/Downloads/tmp_data/db_list.pth'
-model_path = '/home/caitao/Documents/Monkaa/model/'
+model_path = '/home/caitao/Documents/Monkaa/model_SGD_with_path/'
 cuda_available = False
 epochs = 15
 
@@ -220,17 +220,17 @@ def train():
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ])),
-        batch_size=batch_size, num_workers=batch_size)
+        batch_size=batch_size, num_workers=batch_size, shuffle=True)
 
     criterion = nn.L1Loss()
 
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
 
     best = 100000.0
 
     x_pos = 0
-    max_thresh = 50.0
-    min_thresh = 8.0
+    pre_loss = -1.0
+    update_loss_window = False
 
     whether_load_model = False
     state_file = 'do not load. when whether_load_model is True, please specify this variable'
@@ -243,7 +243,7 @@ def train():
         epoch_start = state['epoch']
 
     for epoch in range(epoch_start, epochs + 1):
-        for batch_idx, (l, r, truth) in enumerate(train_loader):
+        for batch_idx, (path_index_tuple, l, r, truth) in enumerate(train_loader):
             if cuda_available:
                 l, r, truth = l.cuda(), r.cuda(), truth.cuda()
             l, r, truth = Variable(l), Variable(r), Variable(truth)
@@ -251,10 +251,36 @@ def train():
             outputs = model(l, r)
             optimizer.zero_grad()
             loss = criterion(outputs, truth)
+            if x_pos == 0:
+                pre_loss = loss.data[0]
+                update_loss_window = True
+            if pre_loss * 10 <= loss.data[0]:
+                exception = {
+                    'loss':loss.data[0],
+                    'path_tuple':path_index_tuple
+                }
+                torch.save(exception, os.path.join(model_path, f'exception_{epoch}_{batch_idx}_{x_pos}.pth'))
+                loss = loss * 0.00001
+            else:
+                pre_loss = loss.data[0]
+                update_loss_window = True
+
             loss.backward()
             optimizer.step()
 
-            if loss.data[0] < max_thresh and whether_vis:
+            if loss.data[0] < best:
+                best = loss.data[0]
+                state = {
+                    'epoch': epoch,
+                    'batch_idx': batch_idx,
+                    'loss': best,
+                    'model_state': model.state_dict(),
+                    'optimizer_state': optimizer.state_dict()
+                }
+                torch.save(state, os.path.join(
+                    model_path, f'best_model.pth'))
+
+            if update_loss_window and whether_vis:
                 vis.line(
                     X=torch.ones((1,)).cpu() * x_pos,
                     Y=torch.Tensor([loss.data[0]]).cpu(),
@@ -264,42 +290,13 @@ def train():
                           win=image_groundtruth, opts=dict(title='groundtruth'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
                           win=image_output, opts=dict(title='output'))
-            elif whether_vis:
-                exception = {
-                    'l': l,
-                    'r': r,
-                    'truth': truth
-                }
-                torch.save(exception, os.path.join(model_path, f'exception_{epoch}_{batch_idx}_{x_pos}.pth'))
+                update_loss_window = False
 
             x_pos += 1
-            if (batch_idx + 1) % 2 == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, (batch_idx + 1) * len(truth),
-                    len(train_loader.dataset),
-                           100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
-            # if loss.data[0] < 0.5 and loss.data[0] < best:
-            #     best = loss.data[0]
-            #     state = {
-            #         'epoch': epoch,
-            #         'batch': batch_idx,
-            #         'model_state': model.state_dict(),
-            #         'optimizer_state': optimizer.state_dict()
-            #     }
-            #     torch.save(state, os.path.join(
-            #         model_path, f'best_model_cache_{epoch}_{(batch_idx+1)*batch_size}.pth'))
-            #     continue
-            # if (batch_idx + 1) % 10 == 0:
-            #     state = {
-            #         'epoch': epoch,
-            #         'batch': batch_idx,
-            #         'model_state': model.state_dict(),
-            #         'optimizer_state': optimizer.state_dict()
-            #     }
-            #     torch.save(state, os.path.join(
-            #         model_path, f'model_cache_{epoch}_{(batch_idx+1)*batch_size}.pth'))
-        if max_thresh / 2 > min_thresh:
-            max_thresh = max_thresh / 2
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, (batch_idx + 1) * len(truth),
+                len(train_loader.dataset),
+                       100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
 
         if (epoch - 1) % 5 == 0 or epoch == 15:
             state = {
@@ -311,8 +308,11 @@ def train():
                 model_path, f'model_cache_{epoch}.pth'))
 
 
-
 if __name__ == "__main__":
     if torch.cuda.is_available():
         cuda_available = True
+    start = time.time()
+    os.makedirs(model_path, exist_ok=True)
     train()
+    end = time.time()
+    print(f'cost time: {end - start}')
