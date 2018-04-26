@@ -11,7 +11,7 @@ import os
 import time
 
 index_file_path = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_SGD_with_path/'
+model_path = '/home/caitao/Documents/Monkaa/model_SGD/'
 cuda_available = False
 epochs = 15
 
@@ -254,10 +254,10 @@ def train():
             if x_pos == 0:
                 pre_loss = loss.data[0]
                 update_loss_window = True
-            if pre_loss * 10 <= loss.data[0]:
+            if pre_loss * 8 <= loss.data[0]:
                 exception = {
                     'loss':loss.data[0],
-                    'path_tuple':path_index_tuple
+                    'path':path_index_tuple
                 }
                 torch.save(exception, os.path.join(model_path, f'exception_{epoch}_{batch_idx}_{x_pos}.pth'))
                 loss = loss * 0.00001
