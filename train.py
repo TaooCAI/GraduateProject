@@ -221,6 +221,15 @@ def train():
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ])),
         batch_size=batch_size, num_workers=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(
+        MonkaaDataset(
+            index_file_path,
+            stage='test',
+            transform=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])),
+        batch_size=batch_size, num_workers=batch_size, shuffle=True)
 
     criterion = nn.L1Loss()
 
@@ -229,8 +238,6 @@ def train():
     best = 100000.0
 
     x_pos = 0
-    pre_loss = -1.0
-    update_loss_window = False
 
     whether_load_model = False
     state_file = 'do not load. when whether_load_model is True, please specify this variable'
@@ -243,6 +250,7 @@ def train():
         epoch_start = state['epoch']
 
     for epoch in range(epoch_start, epochs + 1):
+        # train stage
         for batch_idx, (path_index_tuple, l, r, truth) in enumerate(train_loader):
             if cuda_available:
                 l, r, truth = l.cuda(), r.cuda(), truth.cuda()
@@ -251,20 +259,6 @@ def train():
             outputs = model(l, r)
             optimizer.zero_grad()
             loss = criterion(outputs, truth)
-            if x_pos == 0:
-                pre_loss = loss.data[0]
-                update_loss_window = True
-            if pre_loss * 8 <= loss.data[0]:
-                exception = {
-                    'loss':loss.data[0],
-                    'path':path_index_tuple
-                }
-                torch.save(exception, os.path.join(model_path, f'exception_{epoch}_{batch_idx}_{x_pos}.pth'))
-                loss = loss * 0.00001
-            else:
-                pre_loss = loss.data[0]
-                update_loss_window = True
-
             loss.backward()
             optimizer.step()
 
@@ -280,7 +274,7 @@ def train():
                 torch.save(state, os.path.join(
                     model_path, f'best_model.pth'))
 
-            if update_loss_window and whether_vis:
+            if whether_vis:
                 vis.line(
                     X=torch.ones((1,)).cpu() * x_pos,
                     Y=torch.Tensor([loss.data[0]]).cpu(),
@@ -290,7 +284,6 @@ def train():
                           win=image_groundtruth, opts=dict(title='groundtruth'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
                           win=image_output, opts=dict(title='output'))
-                update_loss_window = False
 
             x_pos += 1
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -298,6 +291,7 @@ def train():
                 len(train_loader.dataset),
                        100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
 
+        # save model and optimizer
         if (epoch - 1) % 5 == 0 or epoch == 15:
             state = {
                 'epoch': epoch,
@@ -306,6 +300,30 @@ def train():
             }
             torch.save(state, os.path.join(
                 model_path, f'model_cache_{epoch}.pth'))
+
+        # test stage
+        sum_loss = 0.0
+        pre_loss = -1.0
+        for batch_idx, (path_index_tuple, l, r, truth) in enumerate(test_loader):
+            if (batch_idx * 4) >= 400:
+                break
+            if cuda_available:
+                l, r, truth = l.cuda(), r.cuda(), truth.cuda()
+            l, r, truth = Variable(l, volatile=True), Variable(r, volatile=True), Variable(truth, volatile=True)
+            outputs = model(l, r)
+            loss = criterion(outputs, truth)
+            if batch_idx == 0:
+                pre_loss = loss.data[0]
+            if pre_loss * 8 <= loss.data[0]:
+                ex = {
+                    'loss': loss.data[0],
+                    'path': path_index_tuple
+                }
+                torch.save(ex, os.path.join(model_path, f'test_exception_{epoch}_{batch_idx}.pth'))
+            else:
+                pre_loss = loss.data[0]
+            sum_loss += loss.data[0]
+        print(f'Test Stage: Average loss: {sum_loss / (batch_idx*4)}\n')
 
 
 if __name__ == "__main__":
