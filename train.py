@@ -9,6 +9,7 @@ from MonkaaDataset import MonkaaDataset
 import visdom
 import os
 import time
+from PIL import Image
 
 index_file_path = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
 model_path = '/home/caitao/Documents/Monkaa/model_SGD/'
@@ -74,9 +75,7 @@ class GCNet(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.down_sample1 = down_sample(3, 32)
-        self.down_sample2 = down_sample(32, 32)
-
+        self.input = nn.Sequential(nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=2), nn.BatchNorm2d(32), nn.ReLU())
         self.block1 = ResidualBlock(32, 32)
         self.block2 = ResidualBlock(32, 32)
         self.block3 = ResidualBlock(32, 32)
@@ -119,9 +118,7 @@ class GCNet(nn.Module):
             32, 1, kernel_size=3, stride=1, padding=1)
 
     def forward(self, l, r):
-        l = self.down_sample1(l)
-        l = self.down_sample2(l)
-
+        l = self.input(l)
         l = self.block1(l)
         l = self.block2(l)
         l = self.block3(l)
@@ -133,9 +130,7 @@ class GCNet(nn.Module):
 
         l = self.conv(l)
 
-        r = self.down_sample1(r)
-        r = self.down_sample2(r)
-
+        r = self.input(r)
         r = self.block1(r)
         r = self.block2(r)
         r = self.block3(r)
@@ -212,23 +207,26 @@ def train():
         model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
         model = model.cuda()
 
+    scale = 4
     train_loader = torch.utils.data.DataLoader(
         MonkaaDataset(
             index_file_path,
             stage='train',
             transform=transforms.Compose([
+                transforms.Resize([540 // scale, 960 // scale], interpolation=Image.ANTIALIAS),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ])),
+            ]), truth_scale=scale),
         batch_size=batch_size, num_workers=batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(
         MonkaaDataset(
             index_file_path,
             stage='test',
             transform=transforms.Compose([
+                transforms.Resize([540 // scale, 960 // scale], interpolation=Image.ANTIALIAS),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ])),
+            ]), truth_scale=scale),
         batch_size=batch_size, num_workers=batch_size, shuffle=True)
 
     criterion = nn.L1Loss()
