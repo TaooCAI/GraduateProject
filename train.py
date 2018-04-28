@@ -194,9 +194,9 @@ class GCNet(nn.Module):
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.up2(out)
-        out = self.up1(out)
-        out = self.output(out)
+        out = self.up2(out + l + r)
+        out = self.up1(out + left_half + right_half)
+        out = self.output(out + left + right)
         return out
 
 
