@@ -193,6 +193,7 @@ class GCNet(nn.Module):
 def train():
     batch_size = 4
     whether_vis = True
+
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
@@ -201,19 +202,20 @@ def train():
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(A.cpu(), opts=dict(title='groundtruth'))
         image_output = vis.image(A.cpu(), opts=dict(title='output'))
+
     model = GCNet()
     model.train()
     if cuda_available:
         model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
         model = model.cuda()
 
-    scale = 4
+    scale = 1
+
     train_loader = torch.utils.data.DataLoader(
         MonkaaDataset(
             index_file_path,
             stage='train',
             transform=transforms.Compose([
-                transforms.Resize([540 // scale, 960 // scale], interpolation=Image.ANTIALIAS),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ]), truth_scale=scale),
@@ -223,20 +225,17 @@ def train():
             index_file_path,
             stage='test',
             transform=transforms.Compose([
-                transforms.Resize([540 // scale, 960 // scale], interpolation=Image.ANTIALIAS),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ]), truth_scale=scale),
         batch_size=batch_size, num_workers=batch_size, shuffle=True)
 
     criterion = nn.L1Loss()
-
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
 
     best = 100000.0
-
+    test_best = 100000.0
     x_pos = 0
-
     whether_load_model = False
     state_file = 'do not load. when whether_load_model is True, please specify this variable'
 
@@ -287,17 +286,7 @@ def train():
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, (batch_idx + 1) * len(truth),
                 len(train_loader.dataset),
-                       100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
-
-        # save model and optimizer
-        if (epoch - 1) % 5 == 0 or epoch == 15:
-            state = {
-                'epoch': epoch,
-                'model_state': model.state_dict(),
-                'optimizer_state': optimizer.state_dict()
-            }
-            torch.save(state, os.path.join(
-                model_path, f'model_cache_{epoch}.pth'))
+                100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
 
         # test stage
         sum_loss = 0.0
@@ -307,7 +296,8 @@ def train():
                 break
             if cuda_available:
                 l, r, truth = l.cuda(), r.cuda(), truth.cuda()
-            l, r, truth = Variable(l, volatile=True), Variable(r, volatile=True), Variable(truth, volatile=True)
+            l, r, truth = Variable(l, volatile=True), Variable(
+                r, volatile=True), Variable(truth, volatile=True)
             outputs = model(l, r)
             loss = criterion(outputs, truth)
             if batch_idx == 0:
@@ -317,11 +307,35 @@ def train():
                     'loss': loss.data[0],
                     'path': path_index_tuple
                 }
-                torch.save(ex, os.path.join(model_path, f'test_exception_{epoch}_{batch_idx}.pth'))
+                torch.save(ex, os.path.join(
+                    model_path, f'test_exception_{epoch}_{batch_idx}.pth'))
             else:
                 pre_loss = loss.data[0]
             sum_loss += loss.data[0]
-        print(f'Test Stage: Average loss: {sum_loss / (batch_idx*4)}\n')
+        sum_loss = sum_loss / (batch_idx*4)
+
+        # save test best model
+        if sum_loss < test_best:
+            test_best = sum_loss
+            state = {
+                'loss': sum_loss,
+                'epoch': epoch,
+                'model_state': model.state_dict(),
+                'optimizer_state': optimizer.state_dict()
+            }
+            torch.save(state, os.path.join(
+                model_path, f'test_best_model.pth'))
+        print(f'Test Stage: Average loss: {sum_loss}\n')
+
+        # save model and optimizer
+        state = {
+            'loss': sum_loss,
+            'epoch': epoch,
+            'model_state': model.state_dict(),
+            'optimizer_state': optimizer.state_dict()
+        }
+        torch.save(state, os.path.join(
+            model_path, f'model_cache_{epoch}.pth'))
 
 
 if __name__ == "__main__":
