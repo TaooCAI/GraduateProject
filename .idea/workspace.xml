@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="914a7105-4026-47db-b7e0-60f1317269b9" name="Default" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -19,11 +20,20 @@
       <file leaf-file-name="train.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/train.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="217">
-              <caret line="316" column="30" lean-forward="true" selection-start-line="316" selection-start-column="30" selection-end-line="316" selection-end-column="30" />
+            <state relative-caret-position="179">
+              <caret line="186" column="34" lean-forward="true" selection-start-line="186" selection-start-column="34" selection-end-line="186" selection-end-column="34" />
               <folding>
                 <element signature="e#22#34#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="MonkaaDataset.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/MonkaaDataset.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="228">
+              <caret line="17" lean-forward="true" selection-start-line="17" selection-end-line="17" />
             </state>
           </provider>
         </entry>
@@ -277,7 +287,7 @@
     <frame x="-3" y="31" width="1926" height="1003" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.49812734" visible="true" weight="0.1859375" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" sideWeight="0.49812734" visible="true" weight="0.1859375" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.3281787" />
       <window_info anchor="bottom" id="Event Log" order="7" sideWeight="0.50208336" side_tool="true" weight="0.66629463" />
       <window_info anchor="bottom" id="Version Control" order="7" weight="0.48969072" />
@@ -572,15 +582,15 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/MonkaaDataset.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="285">
-          <caret line="18" column="29" lean-forward="true" selection-start-line="18" selection-start-column="29" selection-end-line="18" selection-end-column="29" />
+        <state relative-caret-position="228">
+          <caret line="17" lean-forward="true" selection-start-line="17" selection-end-line="17" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/train.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="217">
-          <caret line="316" column="30" lean-forward="true" selection-start-line="316" selection-start-column="30" selection-end-line="316" selection-end-column="30" />
+        <state relative-caret-position="179">
+          <caret line="186" column="34" lean-forward="true" selection-start-line="186" selection-start-column="34" selection-end-line="186" selection-end-column="34" />
           <folding>
             <element signature="e#22#34#0" expanded="true" />
           </folding>

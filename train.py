@@ -209,13 +209,14 @@ def train():
         model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
         model = model.cuda()
 
-    scale = 1
+    scale = 4
 
     train_loader = torch.utils.data.DataLoader(
         MonkaaDataset(
             index_file_path,
             stage='train',
             transform=transforms.Compose([
+                transforms.Resize([540 // scale, 960 // scale], interpolation=Image.ANTIALIAS),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ]), truth_scale=scale),
@@ -225,6 +226,7 @@ def train():
             index_file_path,
             stage='test',
             transform=transforms.Compose([
+                transforms.Resize([540 // scale, 960 // scale], interpolation=Image.ANTIALIAS),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ]), truth_scale=scale),
