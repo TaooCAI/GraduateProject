@@ -293,6 +293,7 @@ def train():
         # test stage
         sum_loss = 0.0
         pre_loss = -1.0
+        batch_num = 0
         for batch_idx, (path_index_tuple, l, r, truth) in enumerate(test_loader):
             if (batch_idx * 4) >= 400:
                 break
@@ -314,7 +315,8 @@ def train():
             else:
                 pre_loss = loss.data[0]
             sum_loss += loss.data[0]
-        sum_loss = sum_loss / (batch_idx*4)
+            batch_num += 1
+        sum_loss = sum_loss / (batch_num*4)
 
         # save test best model
         if sum_loss < test_best:
