@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_SGD/'
-loss_file = '/home/caitao/Documents/Monkaa/loss.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_Adam_b1/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_b1.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_b1.txt'
 cuda_available = False
 epochs = 20
 
@@ -198,7 +198,7 @@ class GCNet(nn.Module):
 
 
 def train():
-    batch_size = 4
+    batch_size = 1
     whether_vis = True
 
     if whether_vis is True:
@@ -213,7 +213,7 @@ def train():
     model = GCNet()
     model.train()
     if cuda_available:
-        model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+        # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
         model = model.cuda()
 
     truth_scale = 4
@@ -239,7 +239,8 @@ def train():
         batch_size=batch_size, num_workers=batch_size, shuffle=True)
 
     criterion = nn.L1Loss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
+    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.5,0.999), weight_decay=1e-5)
 
     test_best = 100000.0
     x_pos = 0
