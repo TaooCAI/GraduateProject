@@ -38,7 +38,9 @@ def split_dataset(images_root, truth_root, save_path, scale=4):
         'test': test,
         'train': train
     }
-    torch.save(db, save_path)
+    if save_path is not None:
+        torch.save(db, save_path)
+    return db
 
 
 if __name__ == "__main__":
