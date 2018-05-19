@@ -11,10 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_Adam_b1/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_b1.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_b1.txt'
-cuda_available = False
+model_path = '/home/caitao/Documents/Monkaa/model_Adam_trash/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_trash.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_trash.txt'
 epochs = 20
 
 
@@ -212,9 +211,9 @@ def train():
 
     model = GCNet()
     model.train()
-    if cuda_available:
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
-        model = model.cuda()
+    model = model.to(device)
 
     truth_scale = 4
 
@@ -258,10 +257,8 @@ def train():
     for epoch in range(epoch_start, epochs + 1):
         # train stage
         for batch_idx, (path_index_tuple, l, r, truth) in enumerate(train_loader):
-            if cuda_available:
-                l, r, truth = l.cuda(), r.cuda(), truth.cuda()
-            l, r, truth = Variable(l), Variable(r), Variable(truth)
-
+            l, r, truth = l.to(device), r.to(device), truth.to(device)
+                
             outputs = model(l, r)
             optimizer.zero_grad()
             loss = criterion(outputs, truth)
@@ -271,7 +268,7 @@ def train():
             if whether_vis:
                 vis.line(
                     X=torch.ones((1,)).cpu() * x_pos,
-                    Y=torch.Tensor([loss.data[0]]).cpu(),
+                    Y=torch.Tensor([loss.item()]).cpu(),
                     win=loss_window,
                     update='append')
                 vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
@@ -281,83 +278,81 @@ def train():
             
             # check exception data point
             if batch_idx == 0:
-                pre_loss = loss.data[0]
+                pre_loss = loss.item()
             else:
-                if pre_loss * 6 <= loss.data[0]:
+                if pre_loss * 6 <= loss.item():
                     ex = {
-                        'loss': loss.data[0],
+                        'loss': loss.item(),
                         'path': path_index_tuple
                     }
                     torch.save(ex, os.path.join(
                         model_path, f'train_exception_{epoch}_{batch_idx}.pth'))
                 else:
-                    pre_loss = loss.data[0]
+                    pre_loss = loss.item()
 
 
             x_pos += 1
             # note train loss
             with open(loss_file, mode='a') as f:
-                f.write(str((epoch, batch_idx, len(truth), loss.data[0])))
+                f.write(str((epoch, batch_idx, len(truth), loss.item())))
                 f.write('\n')
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, (batch_idx + 1) * len(truth),
                 len(train_loader.dataset),
-                100. * (batch_idx + 1) / len(train_loader), loss.data[0]))
+                100. * (batch_idx + 1) / len(train_loader), loss.item()))
 
         # test stage
         pre_loss = -1.0
         batch_num = 0
         sum_loss = 0
+        
+        with torch.no_grad():
+            for batch_idx, (path_index_tuple, l, r, truth) in enumerate(test_loader):
+                if (batch_idx * 4) >= 400:
+                    break
 
-        for batch_idx, (path_index_tuple, l, r, truth) in enumerate(test_loader):
-            if (batch_idx * 4) >= 400:
-                break
+                l, r, truth = l.to(device), r.to(device), truth.to(device)
 
-            if cuda_available:
-                l, r, truth = l.cuda(), r.cuda(), truth.cuda()
-            l, r, truth = Variable(l, volatile=True), Variable(
-                r, volatile=True), Variable(truth, volatile=True)
+                outputs = model(l, r)
+                loss = criterion(outputs, truth)
 
-            outputs = model(l, r)
-            loss = criterion(outputs, truth)
-
-            if batch_idx == 0:
-                pre_loss = loss.data[0]
-            else:
-                if pre_loss * 6 <= loss.data[0]:
-                    ex = {
-                        'loss': loss.data[0],
-                        'path': path_index_tuple
-                    }
-                    torch.save(ex, os.path.join(
-                        model_path, f'test_exception_{epoch}_{batch_idx}.pth'))
+                if batch_idx == 0:
+                    pre_loss = loss.item()
                 else:
-                    pre_loss = loss.data[0]
+                    if pre_loss * 6 <= loss.item():
+                        ex = {
+                            'loss': loss.item(),
+                            'path': path_index_tuple
+                        }
+                        torch.save(ex, os.path.join(
+                            model_path, f'test_exception_{epoch}_{batch_idx}.pth'))
+                    else:
+                        pre_loss = loss.item()
 
-            batch_num += 1
-            sum_loss += loss.data[0]
-            # note test loss
-            with open(test_loss_file, mode='a') as f:
-                f.write(str((epoch, batch_idx, len(truth), loss.data[0])))
-                f.write('\n')
-            print('Test: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                (batch_idx + 1) * len(truth),
-                len(test_loader.dataset),
-                100. * (batch_idx + 1) / len(test_loader), loss.data[0]))
+                batch_num += 1
+                sum_loss += loss.item()
+                # note test loss
+                with open(test_loss_file, mode='a') as f:
+                    f.write(str((epoch, batch_idx, len(truth), loss.item())))
+                    f.write('\n')
+                print('Test: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    (batch_idx + 1) * len(truth),
+                    len(test_loader.dataset),
+                    100. * (batch_idx + 1) / len(test_loader), loss.item()))
 
-        sum_loss /= batch_num
-        # save test best model
-        if sum_loss < test_best:
-            test_best = sum_loss
-            state = {
-                'loss': sum_loss,
-                'epoch': epoch,
-                'model_state': model.state_dict(),
-                'optimizer_state': optimizer.state_dict()
-            }
-            torch.save(state, os.path.join(
-                model_path, f'test_best_model.pth'))
-        print(f'Test Stage: Average loss: {sum_loss}\n')
+            sum_loss /= batch_num
+            # save test best model
+            if sum_loss < test_best:
+                test_best = sum_loss
+                state = {
+                    'loss': sum_loss,
+                    'epoch': epoch,
+                    'model_state': model.state_dict(),
+                    'optimizer_state': optimizer.state_dict()
+                }
+                torch.save(state, os.path.join(
+                    model_path, f'test_best_model.pth'))
+            print(f'Test Stage: Average loss: {sum_loss}\n')
 
         # save model and optimizer
         state = {
@@ -390,8 +385,6 @@ if __name__ == "__main__":
                     sys.exit(0)
             os.remove(test_loss_file)
     
-    if torch.cuda.is_available():
-        cuda_available = True
     start = time.time()
     os.makedirs(model_path, exist_ok=True)
     train()

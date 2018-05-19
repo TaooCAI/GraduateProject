@@ -35,6 +35,7 @@ class MonkaaDataset(Dataset):
         img_right = self.transform(img_right)
 
         truth, _ = python_pfm.readPFM(self.index_file[index][2])
+        truth = np.where(truth>=192, np.zeros_like(truth), truth)
         img = Image.fromarray(truth)
         truth = torch.FloatTensor(np.array(
             transforms.Resize([truth.shape[0] // self.truth_scale, truth.shape[1] // self.truth_scale])(
