@@ -10,9 +10,7 @@ import visdom
 import os
 import time
 
-dataset_root = '/home/caitao/Documents/Monkaa'
-frames_dir = 'frames_cleanpass'
-truth_dir = 'disparity'
+db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
 model_path = '/home/caitao/Documents/Monkaa/model_SGD/'
 loss_file = '/home/caitao/Documents/Monkaa/loss.txt'
 test_loss_file = '/home/caitao/Documents/Monkaa/test_loss.txt'
@@ -222,22 +220,22 @@ def train():
 
     train_loader = torch.utils.data.DataLoader(
         MonkaaDataset(
+            db,
             'train',
-            os.path.join(dataset_root, frames_dir),
             transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ]), os.path.join(dataset_root, truth_dir), truth_scale),
+            ]), truth_scale),
         batch_size=batch_size, num_workers=batch_size, shuffle=True)
 
     test_loader = torch.utils.data.DataLoader(
         MonkaaDataset(
+            db,
             'test',
-            os.path.join(dataset_root, frames_dir),
             transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ]), os.path.join(dataset_root, truth_dir), truth_scale),
+            ]), truth_scale),
         batch_size=batch_size, num_workers=batch_size, shuffle=True)
 
     criterion = nn.L1Loss()

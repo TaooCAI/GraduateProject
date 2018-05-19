@@ -18,18 +18,10 @@ from mynet_utils.split_dataset import split_dataset
 
 
 class MonkaaDataset(Dataset):
-    def __init__(self, stage, frames_path, transform, truth_path, truth_scale, index_save_path = None, index_file = None, loadfrom_index_file = False):
+    def __init__(self, db_index_file_path, stage, transform, truth_scale):
         super().__init__()
         self.transform = transform
-        if loadfrom_index_file:
-            if index_file is  None:
-                raise Exception('If you want to load data from index file, Please specify the index file path.')
-            else:
-                self.index_file = torch.load(index_file)[stage]
-        else:
-            db = split_dataset(frames_path, truth_path, index_save_path, scale=truth_scale)
-            self.index_file = db[stage]
-        
+        self.index_file = torch.load(db_index_file_path)[stage]
         self.truth_scale = truth_scale
 
     def __len__(self):
