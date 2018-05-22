@@ -11,9 +11,12 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_Adam_trash/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_trash.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_trash.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_right_shift/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_right_shift.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_right_shift.txt'
+# model_path = '/home/caitao/Documents/Monkaa/model_Adam_MyLoss_trainfrom_initial_test_best_model/'
+# loss_file = '/home/caitao/Documents/Monkaa/loss_Adam_MyLoss_trainfrom_initial_test_best_model.txt'
+# test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_Adam_MyLoss_trainfrom_initial_test_best_model.txt'
 epochs = 20
 
 
@@ -39,7 +42,8 @@ def conv3x3x3(in_channels, out_channels):
 
 def cost_volume_generation(l, r, max_disparity):
     ans = []
-    for t in range(1, max_disparity + 1):
+    # for t in range(1, max_disparity + 1):
+    for t in range(max_disparity, 0, -1):
         ans.append(
             torch.cat([l, torch.cat([r[..., t:], r[..., :t]], dim=3)], dim=1))
     return torch.stack(ans, dim=4)
@@ -196,23 +200,43 @@ class GCNet(nn.Module):
         return out
 
 
+class MyLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    # def forward(self, prediction, truth):
+    #     nonzero_index = torch.nonzero(torch.where(
+    #         truth <= 48, torch.ones_like(truth), torch.zeros_like(truth)))
+    #     res = torch.where(truth <= 48, torch.abs(
+    #         prediction - truth), torch.zeros_like(truth))
+    #     avg_loss = torch.sum(res) / nonzero_index.size()[0]
+    #     return avg_loss
+    def forward(self, prediction, truth):
+        nonzero_index = torch.nonzero(truth)
+        res = torch.where(truth > 0, torch.abs(
+            prediction - truth), torch.zeros_like(truth))
+        avg_loss = torch.sum(res) / nonzero_index.size()[0]
+        return avg_loss
+
+
 def train():
     batch_size = 1
     whether_vis = True
+    # whether_vis = False
 
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='Trainingloss', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossR', legend=['loss']))
         A = torch.randn([250, 250])
         A = (A - torch.min(A)) / torch.max(A)
-        image_groundtruth = vis.image(A.cpu(), opts=dict(title='groundtruth'))
-        image_output = vis.image(A.cpu(), opts=dict(title='output'))
+        image_groundtruth = vis.image(A.cpu(), opts=dict(title='groundtruthR'))
+        image_output = vis.image(A.cpu(), opts=dict(title='outputR'))
 
     model = GCNet()
     model.train()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+    # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
     truth_scale = 4
@@ -237,9 +261,10 @@ def train():
             ]), truth_scale),
         batch_size=batch_size, num_workers=batch_size, shuffle=True)
 
-    criterion = nn.L1Loss()
-    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.5)
-    optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.5,0.999), weight_decay=1e-5)
+    criterion = MyLoss()
+    # optimizer = optim.SGD(model.parameters(), lr=0.00001, momentum=0.1)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3,
+                           betas=(0.5, 0.999), weight_decay=1e-5)
 
     test_best = 100000.0
     x_pos = 0
@@ -247,18 +272,20 @@ def train():
 
     whether_load_model = False
     state_file = 'do not load. when whether_load_model is True, please specify this variable'
+    # whether_load_model = True
+    # state_file = '/home/caitao/Documents/Monkaa/model_Adam_MyLoss_trainfrom_initial/test_best_model.pth'
 
     if whether_load_model is True:
         state = torch.load(state_file)
         model.load_state_dict(state['model_state'])
         optimizer.load_state_dict(state['optimizer_state'])
-        epoch_start = state['epoch']
+        # epoch_start = state['epoch'] + 1
 
     for epoch in range(epoch_start, epochs + 1):
         # train stage
         for batch_idx, (path_index_tuple, l, r, truth) in enumerate(train_loader):
             l, r, truth = l.to(device), r.to(device), truth.to(device)
-                
+
             outputs = model(l, r)
             optimizer.zero_grad()
             loss = criterion(outputs, truth)
@@ -272,10 +299,10 @@ def train():
                     win=loss_window,
                     update='append')
                 vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruth'))
+                          win=image_groundtruth, opts=dict(title='groundtruthR'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
-                          win=image_output, opts=dict(title='output'))
-            
+                          win=image_output, opts=dict(title='outputR'))
+
             # check exception data point
             if batch_idx == 0:
                 pre_loss = loss.item()
@@ -289,7 +316,6 @@ def train():
                         model_path, f'train_exception_{epoch}_{batch_idx}.pth'))
                 else:
                     pre_loss = loss.item()
-
 
             x_pos += 1
             # note train loss
@@ -305,7 +331,7 @@ def train():
         pre_loss = -1.0
         batch_num = 0
         sum_loss = 0
-        
+
         with torch.no_grad():
             for batch_idx, (path_index_tuple, l, r, truth) in enumerate(test_loader):
                 if (batch_idx * 4) >= 400:
@@ -341,7 +367,7 @@ def train():
                     100. * (batch_idx + 1) / len(test_loader), loss.item()))
 
             sum_loss /= batch_num
-            # save test best model
+            save test best model
             if sum_loss < test_best:
                 test_best = sum_loss
                 state = {
@@ -351,8 +377,9 @@ def train():
                     'optimizer_state': optimizer.state_dict()
                 }
                 torch.save(state, os.path.join(
-                    model_path, f'test_best_model.pth'))
+                    model_path, f'test_best_model_epoch{epoch}.pth'))
             print(f'Test Stage: Average loss: {sum_loss}\n')
+            return
 
         # save model and optimizer
         state = {
@@ -368,7 +395,8 @@ def train():
 if __name__ == "__main__":
     if os.path.exists(loss_file):
         while True:
-            answer = input(f'whether remove the following loss file?\n{loss_file}\ny/[n] ')
+            answer = input(
+                f'whether remove the following loss file?\n{loss_file}\ny/[n] ')
             if answer == 'y' or answer == 'yes':
                 break
             elif answer == 'n' or answer == 'no':
@@ -376,17 +404,20 @@ if __name__ == "__main__":
                 sys.exit(0)
         os.remove(loss_file)
     elif os.path.exists(test_loss_file):
-            while True:
-                answer = input(f'whether remove the following loss file?\n{test_loss_file}\ny/[n] ')
-                if answer == 'y' or answer == 'yes':
-                    break
-                elif answer == 'n' or answer == 'no':
-                    import sys
-                    sys.exit(0)
-            os.remove(test_loss_file)
-    
+        while True:
+            answer = input(
+                f'whether remove the following loss file?\n{test_loss_file}\ny/[n] ')
+            if answer == 'y' or answer == 'yes':
+                break
+            elif answer == 'n' or answer == 'no':
+                import sys
+                sys.exit(0)
+        os.remove(test_loss_file)
+
     start = time.time()
     os.makedirs(model_path, exist_ok=True)
     train()
     end = time.time()
+    with open(test_loss_file, mode='a') as f:
+        f.write(f'cost time: {end - start}\n')
     print(f'cost time: {end - start}')
