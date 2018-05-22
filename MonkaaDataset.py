@@ -34,17 +34,18 @@ class MonkaaDataset(Dataset):
         img_left = self.transform(img_left)
         img_right = self.transform(img_right)
 
-        truth, _ = python_pfm.readPFM(self.index_file[index][2])
+        # truth, _ = python_pfm.readPFM(self.index_file[index][2])
+        truth = np.load(self.index_file[index][2][:-4]+'.npy')
 
-        img = Image.fromarray(truth)
-        truth = torch.FloatTensor(np.array(
-            transforms.Resize([truth.shape[0] // self.truth_scale, truth.shape[1] // self.truth_scale])(
-                img))) / self.truth_scale
-        
-        # check bad pixel point
-        for i in range(truth.size()[0]):
-            for j in range(truth.size()[1]):
-                if j - truth[i][j] < 0:
-                    truth[i][j] = 0
+        # img = Image.fromarray(truth)
+        # truth = torch.FloatTensor(np.array(
+        #     transforms.Resize([truth.shape[0] // self.truth_scale, truth.shape[1] // self.truth_scale])(
+        #         img))) / self.truth_scale
 
-        return self.index_file[index], img_left, img_right, truth
+        # # check bad pixel point
+        # for i in range(truth.size()[0]):
+        #     for j in range(truth.size()[1]):
+        #         if j - truth[i][j] < 0:
+        #             truth[i][j] = 0
+
+        return self.index_file[index], img_left, img_right, torch.from_numpy(truth)

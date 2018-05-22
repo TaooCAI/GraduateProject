@@ -71,11 +71,14 @@ class ResidualBlock(nn.Module):
         return out
 
 
-class GCNet(nn.Module):
+class SRNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.input = nn.Sequential(
+        self.fea1 = nn.Sequential(
             nn.Conv2d(3, 32, 5, stride=1, padding=2), nn.BatchNorm2d(32), nn.ReLU())
+        self.fea2 = nn.Sequential(
+            nn.Conv2d(32, 32, 5, stride=1, padding=2), nn.BatchNorm2d(32), nn.ReLU())
+
         self.down1 = down_sample(32, 32)
         self.down2 = down_sample(32, 32)
 
@@ -114,15 +117,20 @@ class GCNet(nn.Module):
         self.dec1 = nn.Sequential(nn.ConvTranspose3d(
             64, 32, 3, stride=2, output_padding=(1, 0, 0)), nn.BatchNorm3d(32), nn.ReLU())
 
+        self.conv_dout = nn.Conv3d(32, 1, 3, padding=1)
+
+        self.conv_dfea = nn.Sequential(nn.Conv2d(
+            1, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.up2 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(0, 0)), nn.BatchNorm2d(32), nn.ReLU())
         self.up1 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(1, 1)), nn.BatchNorm2d(32), nn.ReLU())
 
-        self.output = nn.Conv2d(32, 1, 3, padding=1)
+        self.conv_d = nn.Sequential(
+            nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1), nn.ReLU())
 
     def forward(self, l, r):
-        left = self.input(l)
+        left = self.fea2(self.fea1(l))
         left_half = self.down1(left)
         left_quarter = self.down2(left_half)
 
@@ -137,7 +145,7 @@ class GCNet(nn.Module):
 
         l = self.conv(l)
 
-        right = self.input(r)
+        right = self.fea2(self.fea1(r))
         right_half = self.down1(right)
         right_quarter = self.down2(right_half)
 
@@ -189,6 +197,8 @@ class GCNet(nn.Module):
 
         out = out + out20
 
+        out = self.conv_dout(out)
+
         # soft argmin
         out = (nn.Softmax(dim=4))(torch.mul(out, -1))
         length = out.data.size()[4]
@@ -196,9 +206,10 @@ class GCNet(nn.Module):
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.up2(res + left_quarter)
+        out = self.conv_dfea(res)
+        out = self.up2(out + left_quarter)
         out = self.up1(out + left_half)
-        out = self.output(out + left)
+        out = self.conv_d(out + left)
         return torch.squeeze(out, dim=1)
 
 
@@ -236,7 +247,7 @@ def train():
             A.cpu(), opts=dict(title='groundtruthSR-skip'))
         image_output = vis.image(A.cpu(), opts=dict(title='outputSR-skip'))
 
-    model = GCNet()
+    model = SRNet()
     model.train()
     device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
