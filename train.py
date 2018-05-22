@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_right_shift/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_right_shift.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_right_shift.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip.txt'
 epochs = 20
 
 
@@ -74,7 +74,9 @@ class ResidualBlock(nn.Module):
 class GCNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.down1 = down_sample(3, 32)
+        self.input = nn.Sequential(
+            nn.Conv2d(3, 32, 5, stride=1, padding=2), nn.BatchNorm2d(32), nn.ReLU())
+        self.down1 = down_sample(32, 32)
         self.down2 = down_sample(32, 32)
 
         self.block1 = ResidualBlock(32, 32)
@@ -115,16 +117,16 @@ class GCNet(nn.Module):
         self.up2 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(0, 0)), nn.BatchNorm2d(32), nn.ReLU())
         self.up1 = nn.Sequential(nn.ConvTranspose2d(
-            32, 3, kernel_size=3, stride=2, output_padding=(1, 1)), nn.BatchNorm2d(32), nn.ReLU())
+            32, 32, kernel_size=3, stride=2, output_padding=(1, 1)), nn.BatchNorm2d(32), nn.ReLU())
 
-        self.output = nn.Conv3d(3, 1, kernel_size=3, stride=1, padding=1)
+        self.output = nn.Conv2d(32, 1, 3, padding=1)
 
     def forward(self, l, r):
-        left = l
+        left = self.input(l)
         left_half = self.down1(left)
-        l = self.down2(left_half)
+        left_quarter = self.down2(left_half)
 
-        l = self.block1(l)
+        l = self.block1(left_quarter)
         l = self.block2(l)
         l = self.block3(l)
         l = self.block4(l)
@@ -135,10 +137,11 @@ class GCNet(nn.Module):
 
         l = self.conv(l)
 
-        right_half = self.down1(r)
-        r = self.down2(right_half)
+        right = self.input(r)
+        right_half = self.down1(right)
+        right_quarter = self.down2(right_half)
 
-        r = self.block1(r)
+        r = self.block1(right_quarter)
         r = self.block2(r)
         r = self.block3(r)
         r = self.block4(r)
@@ -186,16 +189,17 @@ class GCNet(nn.Module):
 
         out = out + out20
 
+        # soft argmin
         out = (nn.Softmax(dim=4))(torch.mul(out, -1))
         length = out.data.size()[4]
         res = torch.mul(out[:, :, :, :, 0], 1)
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.up2(out + l)
+        out = self.up2(res + left_quarter)
         out = self.up1(out + left_half)
         out = self.output(out + left)
-        return out
+        return torch.squeeze(out, dim=1)
 
 
 class MyLoss(nn.Module):
@@ -225,12 +229,12 @@ def train():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-no', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR-no'))
-        image_output = vis.image(A.cpu(), opts=dict(title='outputSR-no'))
+            A.cpu(), opts=dict(title='groundtruthSR-skip'))
+        image_output = vis.image(A.cpu(), opts=dict(title='outputSR-skip'))
 
     model = GCNet()
     model.train()
@@ -283,13 +287,11 @@ def train():
     for epoch in range(epoch_start, epochs + 1):
         # train stage
         for batch_idx, (path_index_tuple, l, r, truth) in enumerate(train_loader):
-            l, r, truth = l.to(device), r.to(device), truth.to(device)
 
+            l, r, truth = l.to(device), r.to(device), truth.to(device)
             outputs = model(l, r)
             optimizer.zero_grad()
             loss = criterion(outputs, truth)
-            loss.backward()
-            optimizer.step()
 
             if whether_vis:
                 vis.line(
@@ -298,9 +300,12 @@ def train():
                     win=loss_window,
                     update='append')
                 vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruthSR-no'))
+                          win=image_groundtruth, opts=dict(title='groundtruthSR-skip'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
-                          win=image_output, opts=dict(title='outputSR-no'))
+                          win=image_output, opts=dict(title='outputSR-skip'))
+
+            loss.backward()
+            optimizer.step()
 
             # check exception data point
             if batch_idx == 0:
@@ -366,7 +371,7 @@ def train():
                     100. * (batch_idx + 1) / len(test_loader), loss.item()))
 
             sum_loss /= batch_num
-            save test best model
+            # save test best model
             if sum_loss < test_best:
                 test_best = sum_loss
                 state = {
@@ -378,7 +383,6 @@ def train():
                 torch.save(state, os.path.join(
                     model_path, f'test_best_model_epoch{epoch}.pth'))
             print(f'Test Stage: Average loss: {sum_loss}\n')
-            return
 
         # save model and optimizer
         state = {
