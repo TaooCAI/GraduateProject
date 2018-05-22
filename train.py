@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_right_shift/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_right_shift.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_right_shift.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_right_shift2/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_right_shift2.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_right_shift2.txt'
 # model_path = '/home/caitao/Documents/Monkaa/model_Adam_MyLoss_trainfrom_initial_test_best_model/'
 # loss_file = '/home/caitao/Documents/Monkaa/loss_Adam_MyLoss_trainfrom_initial_test_best_model.txt'
 # test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_Adam_MyLoss_trainfrom_initial_test_best_model.txt'
@@ -40,12 +40,19 @@ def conv3x3x3(in_channels, out_channels):
         nn.BatchNorm3d(out_channels), nn.ReLU())
 
 
+# def cost_volume_generation(l, r, max_disparity):
+#     ans = []
+#     # for t in range(1, max_disparity + 1):
+#     for t in range(max_disparity, 0, -1):
+#         ans.append(
+#             torch.cat([l, torch.cat([r[..., t:], r[..., :t]], dim=3)], dim=1))
+#     return torch.stack(ans, dim=4)
+
 def cost_volume_generation(l, r, max_disparity):
     ans = []
-    # for t in range(1, max_disparity + 1):
-    for t in range(max_disparity, 0, -1):
+    for d in range(1, max_disparity + 1):
         ans.append(
-            torch.cat([l, torch.cat([r[..., t:], r[..., :t]], dim=3)], dim=1))
+            torch.cat([l, torch.cat([r[..., (-d):], r[..., :(-d)]], dim=3)], dim=1))
     return torch.stack(ans, dim=4)
 
 
@@ -227,11 +234,11 @@ def train():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossR', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossR2', legend=['loss']))
         A = torch.randn([250, 250])
         A = (A - torch.min(A)) / torch.max(A)
-        image_groundtruth = vis.image(A.cpu(), opts=dict(title='groundtruthR'))
-        image_output = vis.image(A.cpu(), opts=dict(title='outputR'))
+        image_groundtruth = vis.image(A.cpu(), opts=dict(title='groundtruthR2'))
+        image_output = vis.image(A.cpu(), opts=dict(title='outputR2'))
 
     model = GCNet()
     model.train()
@@ -299,9 +306,9 @@ def train():
                     win=loss_window,
                     update='append')
                 vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruthR'))
+                          win=image_groundtruth, opts=dict(title='groundtruthR2'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
-                          win=image_output, opts=dict(title='outputR'))
+                          win=image_output, opts=dict(title='outputR2'))
 
             # check exception data point
             if batch_idx == 0:
@@ -367,7 +374,7 @@ def train():
                     100. * (batch_idx + 1) / len(test_loader), loss.item()))
 
             sum_loss /= batch_num
-            save test best model
+            # save test best model
             if sum_loss < test_best:
                 test_best = sum_loss
                 state = {
