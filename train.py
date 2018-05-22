@@ -76,8 +76,8 @@ class GCNet(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # self.input = nn.Sequential(nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=2), nn.BatchNorm2d(32), nn.ReLU())
-        self.block1 = ResidualBlock(3, 32)
+        self.input = nn.Sequential(nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=2), nn.BatchNorm2d(32), nn.ReLU())
+        self.block1 = ResidualBlock(32, 32)
         self.block2 = ResidualBlock(32, 32)
         self.block3 = ResidualBlock(32, 32)
         self.block4 = ResidualBlock(32, 32)
@@ -119,7 +119,7 @@ class GCNet(nn.Module):
             32, 1, kernel_size=3, stride=1, padding=1)
 
     def forward(self, l, r):
-        # l = self.input(l)
+        l = self.input(l)
         l = self.block1(l)
         l = self.block2(l)
         l = self.block3(l)
@@ -131,7 +131,7 @@ class GCNet(nn.Module):
 
         l = self.conv(l)
 
-        # r = self.input(r)
+        r = self.input(r)
         r = self.block1(r)
         r = self.block2(r)
         r = self.block3(r)
