@@ -386,7 +386,7 @@ def train():
                 torch.save(state, os.path.join(
                     model_path, f'test_best_model_epoch{epoch}.pth'))
             print(f'Test Stage: Average loss: {sum_loss}\n')
-            return
+            # return
 
         # save model and optimizer
         state = {
