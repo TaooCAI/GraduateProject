@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR.txt'
 epochs = 20
 
 
@@ -74,12 +74,7 @@ class ResidualBlock(nn.Module):
 class SRNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fea1 = nn.Sequential(
-            nn.Conv2d(3, 32, 5, stride=1, padding=2), nn.BatchNorm2d(32), nn.ReLU())
-        self.fea2 = nn.Sequential(
-            nn.Conv2d(32, 32, 5, stride=1, padding=2), nn.BatchNorm2d(32), nn.ReLU())
-
-        self.down1 = down_sample(32, 32)
+        self.down1 = down_sample(3, 32)
         self.down2 = down_sample(32, 32)
 
         self.block1 = ResidualBlock(32, 32)
@@ -119,10 +114,8 @@ class SRNet(nn.Module):
 
         self.conv_dout = nn.Conv3d(32, 1, 3, padding=1)
 
-        self.conv_dfea = nn.Sequential(nn.Conv2d(
-            1, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.up2 = nn.Sequential(nn.ConvTranspose2d(
-            32, 32, kernel_size=3, stride=2, output_padding=(0, 0)), nn.BatchNorm2d(32), nn.ReLU())
+            1, 32, kernel_size=3, stride=2, output_padding=(0, 0)), nn.BatchNorm2d(32), nn.ReLU())
         self.up1 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(1, 1)), nn.BatchNorm2d(32), nn.ReLU())
 
@@ -130,11 +123,10 @@ class SRNet(nn.Module):
             nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1), nn.ReLU())
 
     def forward(self, l, r):
-        left = self.fea2(self.fea1(l))
-        left_half = self.down1(left)
-        left_quarter = self.down2(left_half)
+        l = self.down1(l)
+        l = self.down2(l)
 
-        l = self.block1(left_quarter)
+        l = self.block1(l)
         l = self.block2(l)
         l = self.block3(l)
         l = self.block4(l)
@@ -145,11 +137,10 @@ class SRNet(nn.Module):
 
         l = self.conv(l)
 
-        right = self.fea2(self.fea1(r))
-        right_half = self.down1(right)
-        right_quarter = self.down2(right_half)
+        r = self.down1(r)
+        r = self.down2(r)
 
-        r = self.block1(right_quarter)
+        r = self.block1(r)
         r = self.block2(r)
         r = self.block3(r)
         r = self.block4(r)
@@ -206,10 +197,8 @@ class SRNet(nn.Module):
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.conv_dfea(res)
-        out = self.up2(out + left_quarter)
-        out = self.up1(out + left_half)
-        out = self.conv_d(out + left)
+        # out = self.conv_dfea(res)
+        out = self.conv_d(self.up1(self.up2(res)))
         return torch.squeeze(out, dim=1)
 
 
@@ -240,16 +229,16 @@ def train():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR-skip'))
-        image_output = vis.image(A.cpu(), opts=dict(title='outputSR-skip'))
+            A.cpu(), opts=dict(title='groundtruthSR'))
+        image_output = vis.image(A.cpu(), opts=dict(title='outputSR'))
 
     model = SRNet()
     model.train()
-    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -311,9 +300,9 @@ def train():
                     win=loss_window,
                     update='append')
                 vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruthSR-skip'))
+                          win=image_groundtruth, opts=dict(title='groundtruthSR'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
-                          win=image_output, opts=dict(title='outputSR-skip'))
+                          win=image_output, opts=dict(title='outputSR'))
 
             loss.backward()
             optimizer.step()
