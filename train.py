@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip2/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip2.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip2.txt'
 epochs = 20
 
 
@@ -119,12 +119,47 @@ class SRNet(nn.Module):
 
         self.conv_dout = nn.Conv3d(32, 1, 3, padding=1)
 
-        self.conv_dfea = nn.Sequential(nn.Conv2d(
+        self.conv_dfea1 = nn.Sequential(nn.Conv2d(
             1, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_dfea2 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_dfea3 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_dfea4 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+
         self.up2 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(0, 0)), nn.BatchNorm2d(32), nn.ReLU())
+
+        self.conv_up2fea1 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_up2fea2 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_up2fea3 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_up2fea4 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+
         self.up1 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(1, 1)), nn.BatchNorm2d(32), nn.ReLU())
+
+        self.conv_up1fea1 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_up1fea2 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_up1fea3 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_up1fea4 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+
+        self.conv_fea1 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_fea2 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_fea3 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        self.conv_fea4 = nn.Sequential(nn.Conv2d(
+            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_d = nn.Sequential(
             nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1), nn.ReLU())
@@ -206,10 +241,19 @@ class SRNet(nn.Module):
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.conv_dfea(res)
-        out = self.up2(out + left_quarter)
-        out = self.up1(out + left_half)
-        out = self.conv_d(out + left)
+        out = self.conv_dfea4(self.conv_dfea3(
+            self.conv_dfea2(self.conv_dfea1(res))))
+
+        out = self.conv_up2fea4(self.conv_up2fea3(self.conv_up2fea2(
+            self.conv_up2fea1(self.up2(out + left_quarter)))))
+        
+        out = self.conv_up1fea4(self.conv_up1fea3(self.conv_up1fea2(
+            self.conv_up1fea1(self.up1(out + left_half)))))
+
+        out = self.conv_fea4(self.conv_fea3(self.conv_fea2(
+            self.conv_fea1(out + left))))
+
+        out = self.conv_d(out)
         return torch.squeeze(out, dim=1)
 
 
@@ -240,12 +284,12 @@ def train():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip2', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR-skip'))
-        image_output = vis.image(A.cpu(), opts=dict(title='outputSR-skip'))
+            A.cpu(), opts=dict(title='groundtruthSR-skip2'))
+        image_output = vis.image(A.cpu(), opts=dict(title='outputSR-skip2'))
 
     model = SRNet()
     model.train()
@@ -311,9 +355,9 @@ def train():
                     win=loss_window,
                     update='append')
                 vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruthSR-skip'))
+                          win=image_groundtruth, opts=dict(title='groundtruthSR-skip2'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
-                          win=image_output, opts=dict(title='outputSR-skip'))
+                          win=image_output, opts=dict(title='outputSR-skip2'))
 
             loss.backward()
             optimizer.step()
