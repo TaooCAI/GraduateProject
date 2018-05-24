@@ -79,7 +79,7 @@ class ResidualBlock(nn.Module):
         return out
 
 
-class GCNet(nn.Module):
+class MyNet(nn.Module):
     def __init__(self):
         super().__init__()
 
@@ -238,7 +238,7 @@ def train_model():
             A.cpu(), opts=dict(title='groundtruthR2'))
         image_output = vis.image(A.cpu(), opts=dict(title='outputR2'))
 
-    model = GCNet()
+    model = MyNet()
     model.train()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
@@ -399,7 +399,7 @@ def train_model():
 
 def test():
     batch_size = 1
-    model = GCNet()
+    model = MyNet()
     model.train()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
