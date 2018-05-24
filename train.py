@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip2/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip2.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip2.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip.txt'
 epochs = 20
 
 
@@ -265,16 +265,16 @@ def train_model():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip2', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR-skip2'))
-        image_output = vis.image(A.cpu(), opts=dict(title='outputSR-skip2'))
+            A.cpu(), opts=dict(title='groundtruthSR-skip'))
+        image_output = vis.image(A.cpu(), opts=dict(title='outputSR-skip'))
 
     model = SRNet()
     model.train()
-    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -336,9 +336,9 @@ def train_model():
                     win=loss_window,
                     update='append')
                 vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruthSR-skip2'))
+                          win=image_groundtruth, opts=dict(title='groundtruthSR-skip'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
-                          win=image_output, opts=dict(title='outputSR-skip2'))
+                          win=image_output, opts=dict(title='outputSR-skip'))
 
             loss.backward()
             optimizer.step()
