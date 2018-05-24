@@ -339,7 +339,7 @@ def train_model():
                 vis.image((tmp / torch.max(tmp)).cpu(),
                           win=image_groundtruth, opts=dict(title='groundtruthSR-skip'))
                 tmp = outputs.data[0] - torch.min(outputs.data[0])
-                vis.image((tmp / torch.max(tmp).cpu(),
+                vis.image((tmp / torch.max(tmp)).cpu(),
                           win=image_output, opts=dict(title='outputSR-skip'))
 
             loss.backward()
