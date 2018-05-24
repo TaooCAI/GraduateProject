@@ -123,10 +123,6 @@ class SRNet(nn.Module):
             1, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.conv_dfea2 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_dfea3 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_dfea4 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.up2 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(0, 0)), nn.BatchNorm2d(32), nn.ReLU())
@@ -134,10 +130,6 @@ class SRNet(nn.Module):
         self.conv_up2fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.conv_up2fea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up2fea3 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up2fea4 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.up1 = nn.Sequential(nn.ConvTranspose2d(
@@ -147,18 +139,10 @@ class SRNet(nn.Module):
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.conv_up1fea2 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up1fea3 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up1fea4 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.conv_fea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_fea3 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_fea4 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_d = nn.Sequential(
@@ -241,17 +225,14 @@ class SRNet(nn.Module):
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.conv_dfea4(self.conv_dfea3(
-            self.conv_dfea2(self.conv_dfea1(res))))
+        out = self.conv_dfea2(self.conv_dfea1(res))
 
-        out = self.conv_up2fea4(self.conv_up2fea3(self.conv_up2fea2(
-            self.conv_up2fea1(self.up2(out + left_quarter)))))
-        
-        out = self.conv_up1fea4(self.conv_up1fea3(self.conv_up1fea2(
-            self.conv_up1fea1(self.up1(out + left_half)))))
+        out = self.conv_up2fea2(
+            self.conv_up2fea1(self.up2(out + left_quarter)))
 
-        out = self.conv_fea4(self.conv_fea3(self.conv_fea2(
-            self.conv_fea1(out + left))))
+        out = self.conv_up1fea2(self.conv_up1fea1(self.up1(out + left_half)))
+
+        out = self.conv_fea2(self.conv_fea1(out + left))
 
         out = self.conv_d(out)
         return torch.squeeze(out, dim=1)
@@ -276,7 +257,7 @@ class MyLoss(nn.Module):
         return avg_loss
 
 
-def train():
+def train_model():
     batch_size = 1
     whether_vis = True
     # whether_vis = False
@@ -450,7 +431,64 @@ def train():
             model_path, f'model_cache_{epoch}.pth'))
 
 
-if __name__ == "__main__":
+def test():
+    batch_size = 1
+    model = SRNet()
+    model.train()
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
+    model = model.to(device)
+
+    truth_scale = 1
+
+    test_loader = torch.utils.data.DataLoader(
+        MonkaaDataset(
+            db,
+            'test',
+            transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ]), truth_scale),
+        batch_size=batch_size, num_workers=batch_size, shuffle=True)
+
+    criterion = MyLoss()
+    # optimizer = optim.SGD(model.parameters(), lr=0.00001, momentum=0.1)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3,
+                           betas=(0.5, 0.999), weight_decay=1e-5)
+
+    state_file = '/home/caitao/Documents/Monkaa/model_adam_right_shift2/test_best_model_epoch10.pth'
+    test_all_data_log = test_loss_file[:test_loss_file.rfind(
+        '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
+
+    state = torch.load(state_file)
+    model.load_state_dict(state['model_state'])
+    optimizer.load_state_dict(state['optimizer_state'])
+
+    batch_num = 0
+    sum_loss = 0
+
+    with torch.no_grad():
+        for batch_idx, (path_index_tuple, l, r, truth) in enumerate(test_loader):
+            l, r, truth = l.to(device), r.to(device), truth.to(device)
+
+            outputs = model(l, r)
+            loss = criterion(outputs, truth)
+            batch_num += 1
+            sum_loss += loss.item()
+            # note test loss
+            with open(test_all_data_log, mode='a') as f:
+                f.write(str((path_index_tuple, batch_idx, len(truth), loss.item())))
+                f.write('\n')
+            print('Test: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                (batch_idx + 1) * len(truth),
+                len(test_loader.dataset),
+                100. * (batch_idx + 1) / len(test_loader), loss.item()))
+
+        sum_loss /= batch_num
+        print(f'Test Stage: Average loss: {sum_loss}\n')
+
+
+def train():
     if os.path.exists(loss_file):
         while True:
             answer = input(
@@ -472,10 +510,15 @@ if __name__ == "__main__":
                 sys.exit(0)
         os.remove(test_loss_file)
 
-    start = time.time()
     os.makedirs(model_path, exist_ok=True)
-    train()
+    start = time.time()
+    train_model()
     end = time.time()
     with open(test_loss_file, mode='a') as f:
         f.write(f'cost time: {end - start}\n')
     print(f'cost time: {end - start}')
+
+
+if __name__ == "__main__":
+    train()
+    # test()
