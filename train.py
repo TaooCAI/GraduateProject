@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR2/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR2.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR2.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR.txt'
 epochs = 20
 
 
@@ -123,10 +123,10 @@ class SRNet(nn.Module):
             1, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.conv_dfea2 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_dfea3 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_dfea4 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_dfea3 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_dfea4 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.up2 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(0, 0)), nn.BatchNorm2d(32), nn.ReLU())
@@ -135,10 +135,10 @@ class SRNet(nn.Module):
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.conv_up2fea2 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up2fea3 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up2fea4 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_up2fea3 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_up2fea4 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.up1 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(1, 1)), nn.BatchNorm2d(32), nn.ReLU())
@@ -147,19 +147,19 @@ class SRNet(nn.Module):
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.conv_up1fea2 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up1fea3 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up1fea4 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_up1fea3 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_up1fea4 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         self.conv_fea2 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_fea3 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_fea4 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_fea3 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_fea4 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_d = nn.Sequential(
             nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1), nn.ReLU())
@@ -241,17 +241,13 @@ class SRNet(nn.Module):
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.conv_dfea4(self.conv_dfea3(
-            self.conv_dfea2(self.conv_dfea1(res))))
+        out = self.conv_dfea2(self.conv_dfea1(res))
 
-        out = self.conv_up2fea4(self.conv_up2fea3(self.conv_up2fea2(
-            self.conv_up2fea1(self.up2(out)))))
-        
-        out = self.conv_up1fea4(self.conv_up1fea3(self.conv_up1fea2(
-            self.conv_up1fea1(self.up1(out)))))
+        out = self.conv_up2fea2(self.conv_up2fea1(self.up2(out)))
 
-        out = self.conv_fea4(self.conv_fea3(self.conv_fea2(
-            self.conv_fea1(out))))
+        out = self.conv_up1fea2(self.conv_up1fea1(self.up1(out)))
+
+        out = self.conv_fea2(self.conv_fea1(out))
 
         out = self.conv_d(out)
         return torch.squeeze(out, dim=1)
@@ -284,16 +280,16 @@ def train():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR2', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR2'))
-        image_output = vis.image(A.cpu(), opts=dict(title='outputSR2'))
+            A.cpu(), opts=dict(title='groundtruthSR'))
+        image_output = vis.image(A.cpu(), opts=dict(title='outputSR'))
 
     model = SRNet()
     model.train()
-    device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -355,9 +351,9 @@ def train():
                     win=loss_window,
                     update='append')
                 vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruthSR2'))
+                          win=image_groundtruth, opts=dict(title='groundtruthSR'))
                 vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
-                          win=image_output, opts=dict(title='outputSR2'))
+                          win=image_output, opts=dict(title='outputSR'))
 
             loss.backward()
             optimizer.step()
