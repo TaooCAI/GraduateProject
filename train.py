@@ -335,9 +335,11 @@ def train_model():
                     Y=torch.Tensor([loss.item()]).cpu(),
                     win=loss_window,
                     update='append')
-                vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
+                tmp = truth.data[0] - torch.min(truth.data[0])
+                vis.image((tmp / torch.max(tmp)).cpu(),
                           win=image_groundtruth, opts=dict(title='groundtruthSR-skip'))
-                vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
+                tmp = outputs.data[0] - torch.min(outputs.data[0])
+                vis.image((tmp / torch.max(tmp).cpu(),
                           win=image_output, opts=dict(title='outputSR-skip'))
 
             loss.backward()
