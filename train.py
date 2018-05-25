@@ -241,13 +241,13 @@ class SRNet(nn.Module):
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.conv_dfea2(self.conv_dfea1(res))
+        out = self.conv_dfea1(res)
 
-        out = self.conv_up2fea2(self.conv_up2fea1(self.up2(out)))
+        out = self.conv_up2fea1(self.up2(out))
 
-        out = self.conv_up1fea2(self.conv_up1fea1(self.up1(out)))
+        out = self.conv_up1fea1(self.up1(out))
 
-        out = self.conv_fea2(self.conv_fea1(out))
+        out = self.conv_fea1(out)
 
         out = self.conv_d(out)
         return torch.squeeze(out, dim=1)
