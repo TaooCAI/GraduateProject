@@ -121,29 +121,29 @@ class SRNet(nn.Module):
 
         self.conv_dfea1 = nn.Sequential(nn.Conv2d(
             1, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_dfea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_dfea2 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.up2 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(0, 0)), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_up2fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up2fea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_up2fea2 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.up1 = nn.Sequential(nn.ConvTranspose2d(
             32, 32, kernel_size=3, stride=2, output_padding=(1, 1)), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_up1fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up1fea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_up1fea2 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_fea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_fea2 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
 
         self.conv_d = nn.Sequential(
             nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1), nn.ReLU())
@@ -225,14 +225,13 @@ class SRNet(nn.Module):
         for i in range(1, length):
             res += torch.mul(out[:, :, :, :, i], i + 1)
 
-        out = self.conv_dfea2(self.conv_dfea1(res))
+        out = self.conv_dfea1(res)
 
-        out = self.conv_up2fea2(
-            self.conv_up2fea1(self.up2(out + left_quarter)))
+        out = self.conv_up2fea1(self.up2(out + left_quarter))
 
-        out = self.conv_up1fea2(self.conv_up1fea1(self.up1(out + left_half)))
+        out = self.conv_up1fea1(self.up1(out + left_half))
 
-        out = self.conv_fea2(self.conv_fea1(out + left))
+        out = self.conv_fea1(out + left)
 
         out = self.conv_d(out)
         return torch.squeeze(out, dim=1)
