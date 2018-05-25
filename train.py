@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_4conv/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_4conv.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_4conv.txt'
 epochs = 20
 
 
@@ -121,8 +121,8 @@ class SRNet(nn.Module):
 
         self.conv_dfea1 = nn.Sequential(nn.Conv2d(
             1, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_dfea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_dfea2 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         # self.conv_dfea3 = nn.Sequential(nn.Conv2d(
         #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         # self.conv_dfea4 = nn.Sequential(nn.Conv2d(
@@ -133,8 +133,8 @@ class SRNet(nn.Module):
 
         self.conv_up2fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up2fea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_up2fea2 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         # self.conv_up2fea3 = nn.Sequential(nn.Conv2d(
         #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         # self.conv_up2fea4 = nn.Sequential(nn.Conv2d(
@@ -145,8 +145,8 @@ class SRNet(nn.Module):
 
         self.conv_up1fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_up1fea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_up1fea2 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         # self.conv_up1fea3 = nn.Sequential(nn.Conv2d(
         #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         # self.conv_up1fea4 = nn.Sequential(nn.Conv2d(
@@ -154,8 +154,8 @@ class SRNet(nn.Module):
 
         self.conv_fea1 = nn.Sequential(nn.Conv2d(
             32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
-        self.conv_fea2 = nn.Sequential(nn.Conv2d(
-            32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
+        # self.conv_fea2 = nn.Sequential(nn.Conv2d(
+        #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         # self.conv_fea3 = nn.Sequential(nn.Conv2d(
         #     32, 32, kernel_size=3, stride=1, padding=1), nn.BatchNorm2d(32), nn.ReLU())
         # self.conv_fea4 = nn.Sequential(nn.Conv2d(
@@ -280,12 +280,12 @@ def train_model():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR_4conv', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR'))
-        image_output = vis.image(A.cpu(), opts=dict(title='outputSR'))
+            A.cpu(), opts=dict(title='groundtruthSR_4conv'))
+        image_output = vis.image(A.cpu(), opts=dict(title='outputSR_4conv'))
 
     model = SRNet()
     model.train()
@@ -333,7 +333,7 @@ def train_model():
         state = torch.load(state_file)
         model.load_state_dict(state['model_state'])
         optimizer.load_state_dict(state['optimizer_state'])
-        # epoch_start = state['epoch'] + 1
+        epoch_start = state['epoch'] + 1
 
     for epoch in range(epoch_start, epochs + 1):
         # train stage
@@ -350,10 +350,12 @@ def train_model():
                     Y=torch.Tensor([loss.item()]).cpu(),
                     win=loss_window,
                     update='append')
-                vis.image(((truth.data[0] - torch.min(truth.data[0])) / torch.max(truth.data[0])).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruthSR'))
-                vis.image(((outputs.data[0] - torch.min(outputs.data[0])) / torch.max(outputs.data[0])).cpu(),
-                          win=image_output, opts=dict(title='outputSR'))
+                tmp = truth.data[0] - torch.min(truth.data[0])
+                vis.image((tmp / torch.max(tmp)).cpu(),
+                          win=image_groundtruth, opts=dict(title='groundtruthSR_4conv'))
+                tmp = outputs.data[0] - torch.min(outputs.data[0])
+                vis.image((tmp / torch.max(tmp)).cpu(),
+                          win=image_output, opts=dict(title='outputSR_4conv'))
 
             loss.backward()
             optimizer.step()
@@ -450,11 +452,11 @@ def test():
     batch_size = 1
     model = SRNet()
     model.train()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
-    truth_scale = 4
+    truth_scale = 1
 
     test_loader = torch.utils.data.DataLoader(
         MonkaaDataset(
@@ -471,7 +473,7 @@ def test():
     optimizer = optim.Adam(model.parameters(), lr=1e-3,
                            betas=(0.5, 0.999), weight_decay=1e-5)
 
-    state_file = '/home/caitao/Documents/Monkaa/model_adam_right_shift2/test_best_model_epoch10.pth'
+    state_file = '/home/caitao/Documents/Monkaa/model_adam_SRlr1e-4/model_cache_20.pth'
     test_all_data_log = test_loss_file[:test_loss_file.rfind(
         '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
 
