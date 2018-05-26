@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip_4conv.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip_4conv.txt'
 epochs = 20
 
 
@@ -264,12 +264,13 @@ def train_model():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip_4conv', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR-skip'))
-        image_output = vis.image(A.cpu(), opts=dict(title='outputSR-skip'))
+            A.cpu(), opts=dict(title='groundtruthSR-skip_4conv'))
+        image_output = vis.image(
+            A.cpu(), opts=dict(title='outputSR-skip_4conv'))
 
     model = SRNet()
     model.train()
@@ -297,7 +298,7 @@ def train_model():
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ]), truth_scale),
-        batch_size=batch_size, num_workers=batch_size, shuffle=True)
+        batch_size=batch_size, num_workers=batch_size, shuffle=False)
 
     criterion = MyLoss()
     # optimizer = optim.SGD(model.parameters(), lr=0.00001, momentum=0.1)
@@ -317,7 +318,7 @@ def train_model():
         state = torch.load(state_file)
         model.load_state_dict(state['model_state'])
         optimizer.load_state_dict(state['optimizer_state'])
-        # epoch_start = state['epoch'] + 1
+        epoch_start = state['epoch'] + 1
 
     for epoch in range(epoch_start, epochs + 1):
         # train stage
@@ -327,22 +328,26 @@ def train_model():
             outputs = model(l, r)
             optimizer.zero_grad()
             loss = criterion(outputs, truth)
-
-            if whether_vis:
-                vis.line(
-                    X=torch.ones((1,)).cpu() * x_pos,
-                    Y=torch.Tensor([loss.item()]).cpu(),
-                    win=loss_window,
-                    update='append')
-                tmp = truth.data[0] - torch.min(truth.data[0])
-                vis.image((tmp / torch.max(tmp)).cpu(),
-                          win=image_groundtruth, opts=dict(title='groundtruthSR-skip'))
-                tmp = outputs.data[0] - torch.min(outputs.data[0])
-                vis.image((tmp / torch.max(tmp)).cpu(),
-                          win=image_output, opts=dict(title='outputSR-skip'))
-
             loss.backward()
             optimizer.step()
+
+            with torch.no_grad():
+                if whether_vis:
+                    vis.line(
+                        X=torch.ones((1,)).cpu() * x_pos,
+                        Y=torch.Tensor([loss.item()]).cpu(),
+                        win=loss_window,
+                        update='append')
+
+                    tmp = torch.where(outputs.data[0] < 0, torch.zeros_like(
+                        outputs.data[0]), outputs.data[0])
+                    tmp = torch.where(tmp > 255, torch.zeros_like(tmp), tmp)
+                    vis.image(tmp.cpu(),
+                              win=image_output, opts=dict(title='outputSR-skip_4conv'))
+
+                    tmp = truth.data[0] - torch.min(truth.data[0])
+                    vis.image((tmp / torch.max(tmp)).cpu(),
+                              win=image_groundtruth, opts=dict(title='groundtruthSR-skip_4conv'))
 
             # check exception data point
             if batch_idx == 0:
@@ -450,14 +455,14 @@ def test():
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ]), truth_scale),
-        batch_size=batch_size, num_workers=batch_size, shuffle=True)
+        batch_size=batch_size, num_workers=batch_size, shuffle=False)
 
     criterion = MyLoss()
     # optimizer = optim.SGD(model.parameters(), lr=0.00001, momentum=0.1)
     optimizer = optim.Adam(model.parameters(), lr=1e-3,
                            betas=(0.5, 0.999), weight_decay=1e-5)
 
-    state_file = '/home/caitao/Documents/Monkaa/model_adam_right_shift2/test_best_model_epoch10.pth'
+    state_file = '/home/caitao/Documents/Monkaa/model_adam_SR_skip/model_cache_20.pth'
     test_all_data_log = test_loss_file[:test_loss_file.rfind(
         '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
 
