@@ -240,7 +240,7 @@ def train_model():
 
     model = MyNet()
     model.train()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -401,7 +401,7 @@ def test():
     batch_size = 1
     model = MyNet()
     model.train()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -422,9 +422,9 @@ def test():
     optimizer = optim.Adam(model.parameters(), lr=1e-3,
                            betas=(0.5, 0.999), weight_decay=1e-5)
 
-    state_file = '/home/caitao/Documents/Monkaa/model_adam_right_shift2/test_best_model_epoch10.pth'
+    state_file = '/home/caitao/Documents/Monkaa/model_adam_right_shift2/model_cache_20.pth'
     test_all_data_log = test_loss_file[:test_loss_file.rfind(
-        '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
+        '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '_bilinear_truth.log'
 
     state = torch.load(state_file)
     model.load_state_dict(state['model_state'])
@@ -438,7 +438,18 @@ def test():
             l, r, truth = l.to(device), r.to(device), truth.to(device)
 
             outputs = model(l, r)
+
+            tran = torch.nn.UpsamplingBilinear2d(scale_factor=4)
+            outputs = outputs.unsqueeze(dim=1)
+            outputs = tran(outputs).squeeze(dim=1)
+            outputs *= 4
+
+            truth = truth.unsqueeze(dim=1)
+            truth = tran(truth).squeeze(dim=1)
+            truth *= 4
+
             loss = criterion(outputs, truth)
+
             batch_num += 1
             sum_loss += loss.item()
             # note test loss
