@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip_4conv.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip_4conv.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip_4conv_onlyrgb.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip_4conv_onlyrgb.txt'
 epochs = 20
 
 
@@ -150,10 +150,10 @@ class SRNet(nn.Module):
 
     def forward(self, l, r):
         left = self.fea2(self.fea1(l))
-        left_half = self.down1(left)
-        left_quarter = self.down2(left_half)
+        l = self.down1(left)
+        l = self.down2(l)
 
-        l = self.block1(left_quarter)
+        l = self.block1(l)
         l = self.block2(l)
         l = self.block3(l)
         l = self.block4(l)
@@ -165,10 +165,10 @@ class SRNet(nn.Module):
         l = self.conv(l)
 
         right = self.fea2(self.fea1(r))
-        right_half = self.down1(right)
-        right_quarter = self.down2(right_half)
+        r = self.down1(right)
+        r = self.down2(r)
 
-        r = self.block1(right_quarter)
+        r = self.block1(r)
         r = self.block2(r)
         r = self.block3(r)
         r = self.block4(r)
@@ -227,9 +227,9 @@ class SRNet(nn.Module):
 
         out = self.conv_dfea1(res)
 
-        out = self.conv_up2fea1(self.up2(out + left_quarter))
+        out = self.conv_up2fea1(self.up2(out))
 
-        out = self.conv_up1fea1(self.up1(out + left_half))
+        out = self.conv_up1fea1(self.up1(out))
 
         out = self.conv_fea1(out + left)
 
@@ -260,21 +260,19 @@ def train_model():
     batch_size = 1
     whether_vis = True
     # whether_vis = False
-
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip_4conv', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip_4conv_onlyrgb', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR-skip_4conv'))
+            A.cpu(), opts=dict(title='groundtruthSR-skip_4conv_onlyrgb'))
         image_output = vis.image(
-            A.cpu(), opts=dict(title='outputSR-skip_4conv'))
-
+            A.cpu(), opts=dict(title='outputSR-skip_4conv_onlyrgb'))
     model = SRNet()
     model.train()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -341,13 +339,13 @@ def train_model():
 
                     tmp = torch.where(outputs.data[0] < 0, torch.zeros_like(
                         outputs.data[0]), outputs.data[0])
-                    tmp = torch.where(tmp > 255, torch.zeros_like(tmp), tmp)
+                    tmp = torch.where(tmp > 255, torch.full_like(tmp, 255), tmp)
                     vis.image(tmp.cpu(),
-                              win=image_output, opts=dict(title='outputSR-skip_4conv'))
+                              win=image_output, opts=dict(title='outputSR-skip_4conv_onlyrgb'))
 
                     tmp = truth.data[0] - torch.min(truth.data[0])
                     vis.image((tmp / torch.max(tmp)).cpu(),
-                              win=image_groundtruth, opts=dict(title='groundtruthSR-skip_4conv'))
+                              win=image_groundtruth, opts=dict(title='groundtruthSR-skip_4conv_onlyrgb'))
 
             # check exception data point
             if batch_idx == 0:
@@ -441,7 +439,7 @@ def test():
     batch_size = 1
     model = SRNet()
     model.train()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
