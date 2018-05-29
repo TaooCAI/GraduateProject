@@ -289,7 +289,8 @@ def train_model():
 
     model = SRNet()
     model.train()
-    device = torch.device(f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(
+        f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -448,11 +449,12 @@ def train_model():
             model_path, f'model_cache_{epoch}.pth'))
 
 
-def test():
+def test(state_file, test_all_data_log):
     batch_size = 1
     model = SRNet()
     model.train()
-    device = torch.device(f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(
+        f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -473,14 +475,20 @@ def test():
     optimizer = optim.Adam(model.parameters(), lr=1e-3,
                            betas=(0.5, 0.999), weight_decay=1e-5)
 
-    state_file = '/home/caitao/Documents/Monkaa/model_adam_SRlr1e-4/model_cache_20.pth'
-    test_all_data_log = test_loss_file[:test_loss_file.rfind(
-        '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
-
     if os.path.exists(test_all_data_log):
         print(f'loss file {test_all_data_log} existed!')
-        import sys
-        sys.exit(0)
+        with open(test_all_data_log, mode='r') as f:
+            avg_loss = 0
+            count = 0
+            for line in f:
+                if not str(line).startswith('('):
+                    continue
+                line = tuple(eval(line))
+                avg_loss += line[3]
+                count += 1
+            avg_loss /= count
+            print(f'Test Stage: Average loss: {avg_loss}\n')
+            return avg_loss
 
     state = torch.load(state_file, map_location=f'cuda:{my_device}')
     model.load_state_dict(state['model_state'])
@@ -508,6 +516,7 @@ def test():
 
         sum_loss /= batch_num
         print(f'Test Stage: Average loss: {sum_loss}\n')
+        return sum_loss
 
 
 def train():
@@ -530,7 +539,12 @@ def train():
 
 
 if __name__ == "__main__":
-    my_device = 1
+    my_device = 0
+    test_loss_list = []
     with torch.cuda.device(my_device):
-        train()
-        # test()
+        # train()
+        for i in range(10, 21):
+            state_file = f'/home/caitao/Documents/Monkaa/model_adam_SR_4conv/model_cache_{i}.pth'
+            test_all_data_log = test_loss_file[:test_loss_file.rfind(
+                '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
+            test_loss_list.append(test(state_file, test_all_data_log))
