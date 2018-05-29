@@ -272,7 +272,8 @@ def train_model():
             A.cpu(), opts=dict(title='outputSR-skip_4conv_onlyrgb'))
     model = SRNet()
     model.train()
-    device = torch.device(f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(
+        f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -339,7 +340,8 @@ def train_model():
 
                     tmp = torch.where(outputs.data[0] < 0, torch.zeros_like(
                         outputs.data[0]), outputs.data[0])
-                    tmp = torch.where(tmp > 255, torch.full_like(tmp, 255), tmp)
+                    tmp = torch.where(
+                        tmp > 255, torch.full_like(tmp, 255), tmp)
                     vis.image(tmp.cpu(),
                               win=image_output, opts=dict(title='outputSR-skip_4conv_onlyrgb'))
 
@@ -435,11 +437,12 @@ def train_model():
             model_path, f'model_cache_{epoch}.pth'))
 
 
-def test():
+def test(state_file, test_all_data_log):
     batch_size = 1
     model = SRNet()
     model.train()
-    device = torch.device(f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(
+        f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -458,20 +461,14 @@ def test():
     criterion = MyLoss()
     # optimizer = optim.SGD(model.parameters(), lr=0.00001, momentum=0.1)
     optimizer = optim.Adam(model.parameters(), lr=1e-3,
-                        betas=(0.5, 0.999), weight_decay=1e-5)
-
-    state_file = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/model_cache_19.pth'
-    test_all_data_log = test_loss_file[:test_loss_file.rfind(
-        '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
+                           betas=(0.5, 0.999), weight_decay=1e-5)
 
     if os.path.exists(test_all_data_log):
         print(f'The file {test_all_data_log} existed!')
-        import sys
-        sys.exit(0)
-
+        return
     state = torch.load(state_file, map_location=f'cuda:{my_device}')
     model.load_state_dict(state['model_state'])
-    optimizer.load_state_dict(state['optimizer_state'])
+    # optimizer.load_state_dict(state['optimizer_state'])
 
     batch_num = 0
     sum_loss = 0
@@ -495,6 +492,7 @@ def test():
 
         sum_loss /= batch_num
         print(f'Test Stage: Average loss: {sum_loss}\n')
+        return sum_loss
 
 
 def train():
@@ -518,6 +516,13 @@ def train():
 
 if __name__ == "__main__":
     my_device = 1
+    test_loss_list = []
     with torch.cuda.device(my_device):
         # train()
-        test()
+        for i in range(10, 21):
+            state_file = f'/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/model_cache_{i}.pth'
+            test_all_data_log = test_loss_file[:test_loss_file.rfind(
+                '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
+            test_loss_list.append(test(state_file, test_all_data_log))
+        import pprint
+        pprint.pprint(test_loss_list)
