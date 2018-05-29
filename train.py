@@ -11,9 +11,9 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip_4conv_onlyrgb.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip_4conv_onlyrgb.txt'
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip_4conv.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip_4conv.txt'
 epochs = 20
 
 
@@ -150,10 +150,10 @@ class SRNet(nn.Module):
 
     def forward(self, l, r):
         left = self.fea2(self.fea1(l))
-        l = self.down1(left)
-        l = self.down2(l)
+        left_half = self.down1(left)
+        left_quarter = self.down2(left_half)
 
-        l = self.block1(l)
+        l = self.block1(left_quarter)
         l = self.block2(l)
         l = self.block3(l)
         l = self.block4(l)
@@ -165,10 +165,10 @@ class SRNet(nn.Module):
         l = self.conv(l)
 
         right = self.fea2(self.fea1(r))
-        r = self.down1(right)
-        r = self.down2(r)
+        right_half = self.down1(right)
+        right_quarter = self.down2(right_half)
 
-        r = self.block1(r)
+        r = self.block1(right_quarter)
         r = self.block2(r)
         r = self.block3(r)
         r = self.block4(r)
@@ -227,9 +227,9 @@ class SRNet(nn.Module):
 
         out = self.conv_dfea1(res)
 
-        out = self.conv_up2fea1(self.up2(out))
+        out = self.conv_up2fea1(self.up2(out + left_quarter))
 
-        out = self.conv_up1fea1(self.up1(out))
+        out = self.conv_up1fea1(self.up1(out + left_half))
 
         out = self.conv_fea1(out + left)
 
@@ -465,7 +465,20 @@ def test(state_file, test_all_data_log):
 
     if os.path.exists(test_all_data_log):
         print(f'The file {test_all_data_log} existed!')
-        return
+        with open(test_all_data_log, mode='r') as f:
+            avg_loss = 0
+            count = 0
+            for line in f:
+                if not str(line).startswith('('):
+                    print(line)
+                    continue
+                line = tuple(eval(line))
+                avg_loss += line[3]
+                count += 1
+            avg_loss /= count
+            print(f'Test Stage: Average loss: {avg_loss}\n')
+        return avg_loss
+
     state = torch.load(state_file, map_location=f'cuda:{my_device}')
     model.load_state_dict(state['model_state'])
     # optimizer.load_state_dict(state['optimizer_state'])
@@ -515,12 +528,12 @@ def train():
 
 
 if __name__ == "__main__":
-    my_device = 1
+    my_device = 2
     test_loss_list = []
     with torch.cuda.device(my_device):
         # train()
         for i in range(10, 21):
-            state_file = f'/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/model_cache_{i}.pth'
+            state_file = f'/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv/model_cache_{i}.pth'
             test_all_data_log = test_loss_file[:test_loss_file.rfind(
                 '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
             test_loss_list.append(test(state_file, test_all_data_log))
