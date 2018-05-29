@@ -240,7 +240,7 @@ def train_model():
 
     model = MyNet()
     model.train()
-    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -281,7 +281,7 @@ def train_model():
     # state_file = '/home/caitao/Documents/Monkaa/model_Adam_MyLoss_trainfrom_initial/test_best_model.pth'
 
     if whether_load_model is True:
-        state = torch.load(state_file)
+        state = torch.load(state_file, map_location=f'cuda:{my_device}')
         model.load_state_dict(state['model_state'])
         optimizer.load_state_dict(state['optimizer_state'])
         # epoch_start = state['epoch'] + 1
@@ -401,7 +401,7 @@ def test():
     batch_size = 1
     model = MyNet()
     model.train()
-    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{my_device}' if torch.cuda.is_available() else 'cpu')
     # model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3])
     model = model.to(device)
 
@@ -426,7 +426,12 @@ def test():
     test_all_data_log = test_loss_file[:test_loss_file.rfind(
         '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '_bilinear_truth.log'
 
-    state = torch.load(state_file)
+    if os.path.exists(test_all_data_log):
+        print(f'loss file {test_all_data_log} existed!')
+        import sys
+        sys.exit(0)
+    
+    state = torch.load(state_file, map_location=f'cuda:{my_device}')
     model.load_state_dict(state['model_state'])
     optimizer.load_state_dict(state['optimizer_state'])
 
@@ -467,25 +472,13 @@ def test():
 
 def train():
     if os.path.exists(loss_file):
-        while True:
-            answer = input(
-                f'whether remove the following loss file?\n{loss_file}\ny/[n] ')
-            if answer == 'y' or answer == 'yes':
-                break
-            elif answer == 'n' or answer == 'no':
-                import sys
-                sys.exit(0)
-        os.remove(loss_file)
+        print(f'loss file {loss_file} existed!')
+        import sys
+        sys.exit(0)
     elif os.path.exists(test_loss_file):
-        while True:
-            answer = input(
-                f'whether remove the following loss file?\n{test_loss_file}\ny/[n] ')
-            if answer == 'y' or answer == 'yes':
-                break
-            elif answer == 'n' or answer == 'no':
-                import sys
-                sys.exit(0)
-        os.remove(test_loss_file)
+        print(f'test loss file {test_loss_file} existed!')
+        import sys
+        sys.exit(0)
 
     os.makedirs(model_path, exist_ok=True)
     start = time.time()
@@ -497,5 +490,7 @@ def train():
 
 
 if __name__ == "__main__":
-    # train()
-    test()
+    my_device = 1
+    with torch.cuda.device(my_device):
+        # train()
+        test()
