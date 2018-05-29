@@ -11,10 +11,10 @@ import os
 import time
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
-model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/'
-loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip_4conv_onlyrgb.txt'
-test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip_4conv_onlyrgb.txt'
-epochs = 20
+model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb_continue/'
+loss_file = '/home/caitao/Documents/Monkaa/loss_adam_SR_skip_4conv_onlyrgb_continue.txt'
+test_loss_file = '/home/caitao/Documents/Monkaa/test_loss_adam_SR_skip_4conv_onlyrgb_continue.txt'
+epochs = 41
 
 
 def down_sample(in_channels, out_channels):
@@ -263,13 +263,13 @@ def train_model():
     if whether_vis is True:
         vis = visdom.Visdom(port=9999)
         loss_window = vis.line(X=torch.zeros((1,)).cpu(), Y=torch.zeros((1,)).cpu(),
-                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip_4conv_onlyrgb', legend=['loss']))
+                               opts=dict(xlabel='batches', ylabel='loss', title='TraininglossSR-skip_4conv_onlyrgb_continue', legend=['loss']))
         A = torch.randn([540, 960])
         A = (A - torch.min(A)) / torch.max(A)
         image_groundtruth = vis.image(
-            A.cpu(), opts=dict(title='groundtruthSR-skip_4conv_onlyrgb'))
+            A.cpu(), opts=dict(title='groundtruthSR-skip_4conv_onlyrgb_continue'))
         image_output = vis.image(
-            A.cpu(), opts=dict(title='outputSR-skip_4conv_onlyrgb'))
+            A.cpu(), opts=dict(title='outputSR-skip_4conv_onlyrgb_continue'))
     model = SRNet()
     model.train()
     device = torch.device(
@@ -308,16 +308,17 @@ def train_model():
     x_pos = 0
     epoch_start = 0
 
-    whether_load_model = False
-    state_file = 'do not load. when whether_load_model is True, please specify this variable'
-    # whether_load_model = True
-    # state_file = '/home/caitao/Documents/Monkaa/model_Adam_MyLoss_trainfrom_initial/test_best_model.pth'
+    # whether_load_model = False
+    # state_file = 'do not load. when whether_load_model is True, please specify this variable'
+    whether_load_model = True
+    state_file = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/model_cache_19.pth'
 
     if whether_load_model is True:
         state = torch.load(state_file, map_location=f'cuda:{my_device}')
         model.load_state_dict(state['model_state'])
         optimizer.load_state_dict(state['optimizer_state'])
         epoch_start = state['epoch'] + 1
+        test_best = state['loss']
 
     for epoch in range(epoch_start, epochs + 1):
         # train stage
@@ -343,25 +344,25 @@ def train_model():
                     tmp = torch.where(
                         tmp > 255, torch.full_like(tmp, 255), tmp)
                     vis.image(tmp.cpu(),
-                              win=image_output, opts=dict(title='outputSR-skip_4conv_onlyrgb'))
+                              win=image_output, opts=dict(title='outputSR-skip_4conv_onlyrgb_continue'))
 
                     tmp = truth.data[0] - torch.min(truth.data[0])
                     vis.image((tmp / torch.max(tmp)).cpu(),
-                              win=image_groundtruth, opts=dict(title='groundtruthSR-skip_4conv_onlyrgb'))
+                              win=image_groundtruth, opts=dict(title='groundtruthSR-skip_4conv_onlyrgb_continue'))
 
             # check exception data point
-            if batch_idx == 0:
-                pre_loss = loss.item()
-            else:
-                if pre_loss * 6 <= loss.item():
-                    ex = {
-                        'loss': loss.item(),
-                        'path': path_index_tuple
-                    }
-                    torch.save(ex, os.path.join(
-                        model_path, f'train_exception_{epoch}_{batch_idx}.pth'))
-                else:
-                    pre_loss = loss.item()
+            # if batch_idx == 0:
+            #     pre_loss = loss.item()
+            # else:
+            #     if pre_loss * 6 <= loss.item():
+            #         ex = {
+            #             'loss': loss.item(),
+            #             'path': path_index_tuple
+            #         }
+            #         torch.save(ex, os.path.join(
+            #             model_path, f'train_exception_{epoch}_{batch_idx}.pth'))
+            #     else:
+            #         pre_loss = loss.item()
 
             x_pos += 1
             # note train loss
@@ -380,26 +381,26 @@ def train_model():
 
         with torch.no_grad():
             for batch_idx, (path_index_tuple, l, r, truth) in enumerate(test_loader):
-                if (batch_idx * 4) >= 400:
-                    break
+                # if (batch_idx * 4) >= 400:
+                #     break
 
                 l, r, truth = l.to(device), r.to(device), truth.to(device)
 
                 outputs = model(l, r)
                 loss = criterion(outputs, truth)
 
-                if batch_idx == 0:
-                    pre_loss = loss.item()
-                else:
-                    if pre_loss * 6 <= loss.item():
-                        ex = {
-                            'loss': loss.item(),
-                            'path': path_index_tuple
-                        }
-                        torch.save(ex, os.path.join(
-                            model_path, f'test_exception_{epoch}_{batch_idx}.pth'))
-                    else:
-                        pre_loss = loss.item()
+                # if batch_idx == 0:
+                #     pre_loss = loss.item()
+                # else:
+                #     if pre_loss * 6 <= loss.item():
+                #         ex = {
+                #             'loss': loss.item(),
+                #             'path': path_index_tuple
+                #         }
+                #         torch.save(ex, os.path.join(
+                #             model_path, f'test_exception_{epoch}_{batch_idx}.pth'))
+                #     else:
+                #         pre_loss = loss.item()
 
                 batch_num += 1
                 sum_loss += loss.item()
@@ -516,13 +517,13 @@ def train():
 
 if __name__ == "__main__":
     my_device = 1
-    test_loss_list = []
     with torch.cuda.device(my_device):
-        # train()
-        for i in range(10, 21):
-            state_file = f'/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/model_cache_{i}.pth'
-            test_all_data_log = test_loss_file[:test_loss_file.rfind(
-                '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
-            test_loss_list.append(test(state_file, test_all_data_log))
-        import pprint
-        pprint.pprint(test_loss_list)
+        train()
+        # test_loss_list = []
+        # for i in range(10, 21):
+        #     state_file = f'/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb/model_cache_{i}.pth'
+        #     test_all_data_log = test_loss_file[:test_loss_file.rfind(
+        #         '.')] + '_' + state_file[state_file.rfind('/')+1:state_file.rfind('.')] + '.log'
+        #     test_loss_list.append(test(state_file, test_all_data_log))
+        # import pprint
+        # pprint.pprint(test_loss_list)
