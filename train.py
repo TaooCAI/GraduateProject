@@ -1,14 +1,17 @@
 # -*- coding=utf8 -*-
+import os
+import time
+
 import torch
 import torch.nn as nn
 from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 from torch.utils.data import Dataset
-from MonkaaDataset import MonkaaDataset
 import visdom
-import os
-import time
+
+from MonkaaDataset import MonkaaDataset
+
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
 model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_continue/'
@@ -532,7 +535,7 @@ if __name__ == "__main__":
     my_device = 2
     with torch.cuda.device(my_device):
         train()
-        # test_loss_list = []        
+        # test_loss_list = []
         # for i in range(10, 21):
         #     state_file = f'/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv/model_cache_{i}.pth'
         #     test_all_data_log = test_loss_file[:test_loss_file.rfind(
