@@ -1,12 +1,4 @@
 # -*- coding=utf8 -*-
-
-"""
-@author: CaiTao
-@license: Apache Licence
-@contact: 1120141815@bit.edu.cn
-@file: split_dataset.py
-@time: 4/17/18 10:23 AM
-"""
 import os
 import random
 import torch
@@ -38,9 +30,7 @@ def split_dataset(images_root, truth_root, save_path, scale=4):
         'test': test,
         'train': train
     }
-    if save_path is not None:
-        torch.save(db, save_path)
-    return db
+    torch.save(db, save_path)
 
 
 if __name__ == "__main__":
