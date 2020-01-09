@@ -1,20 +1,12 @@
 # -*- coding=utf8 -*-
-
-"""
-@author: CaiTao
-@license: Apache Licence
-@contact: 1120141815@bit.edu.cn
-@file: MonkaaDataset.py
-@time: 4/16/18 7:25 PM
-"""
-
-from torch.utils.data import Dataset
 import torch
-from mynet_utils import python_pfm
-from PIL import Image
+from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
-from mynet_utils.split_dataset import split_dataset
+from PIL import Image
+
+from utils.split_dataset import split_dataset
+from utils import python_pfm
 
 
 class MonkaaDataset(Dataset):

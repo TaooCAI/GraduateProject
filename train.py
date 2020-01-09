@@ -1,14 +1,16 @@
 # -*- coding=utf8 -*-
+import os
+import time
+
 import torch
 import torch.nn as nn
 from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 from torch.utils.data import Dataset
-from MonkaaDataset import MonkaaDataset
 import visdom
-import os
-import time
+
+from MonkaaDataset import MonkaaDataset
 
 db = "/home/caitao/Documents/Monkaa/monkaa_list.pth"
 model_path = '/home/caitao/Documents/Monkaa/model_adam_SR_skip_4conv_onlyrgb_continue/'
