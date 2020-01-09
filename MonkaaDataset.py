@@ -1,19 +1,12 @@
 # -*- coding=utf8 -*-
-
-"""
-@author: CaiTao
-@license: Apache Licence
-@contact: 1120141815@bit.edu.cn
-@file: MonkaaDataset.py
-@time: 4/16/18 4:26 PM
-"""
 import os
 
 import scipy.misc as scim
-
-from torch.utils.data import Dataset
-from mynet_utils import utils
 import torch
+from torch.utils.data import Dataset
+
+from utils import python_pfm
+
 
 class MonkaaDataset(Dataset):
     def __init__(self, images_root, truth_root, transform):
@@ -42,7 +35,7 @@ class MonkaaDataset(Dataset):
         img_left = self.transform(img_left)
         img_right = self.transform(img_right)
 
-        truth, _ = utils.readPFM(self.truth[index])
+        truth, _ = python_pfm.readPFM(self.truth[index])
         truth = torch.FloatTensor(truth.tolist())
 
         return img_left, img_right, truth

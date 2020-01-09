@@ -5,6 +5,7 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 from torch.utils.data import Dataset
+
 from MonkaaDataset import MonkaaDataset
 
 MAX_D = 192
