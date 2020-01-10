@@ -12,19 +12,19 @@ Reproduce the work of Kendall A, et al. Meantime, I conduct some extra experimen
 **<p align="center">Left Image</p>**
 
 <p align="center">
-<img src="./demo/120/left.png" alt="left image" height="60%" width="60%">
+<img src="./demo/120/left.png?raw=true" alt="left image" height="60%" width="60%">
 </p>
 
 **<p align="center">Groundtruth Disparity</p>**
 
 <p align="center">
-<img align="center" alt="groundtruth" src="./demo/120/groundtruth.png" height="60%" width="60%">
+<img align="center" alt="groundtruth" src="./demo/120/groundtruth.png?raw=true" height="60%" width="60%">
 </p>
 
 **<p align="center">Prediction Disparity</p>**
 
 <p align="center">
-<img align="center" alt="prediction" src="./demo/120/prediction.png" height="60%" width="60%">
+<img align="center" alt="prediction" src="./demo/120/prediction.png?raw=true" height="60%" width="60%">
 </p>
 
 ## Quantitative Results
